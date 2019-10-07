@@ -19,5 +19,8 @@ if __name__ == "__main__":
     # if we get to this point then everything was ok
 
     # load the data
-    data_generators = tfds.load(name=args.dataset)
-    data = data_generators['train'].concatenate(data_generators['test'])
+    data_generators = tfds.load(name="mnist", batch_size=-1)
+    train = tf.data.Dataset.from_tensor_slices(data_generators['train']['image'])
+    test = tf.data.Dataset.from_tensor_slices(data_generators['test']['image'])
+
+    full_dataset = train.concatenate(test)
