@@ -20,15 +20,15 @@ if __name__ == "__main__":
     if args.dataset == 'celeb_a':
         # for CelebA, they take a 140x140 centre crop of the image and resize to 32x32
         # TODO: check which interpolation they use for resizing - might be important!
-        train_data = train_data.map( lambda x: tf.image.resize_with_crop_or_pad(x, crop_dim, crop_dim) 
-                              ).map( lambda x: tf.image.resize(x, (scale_dim, scale_dim)) )
+        train_data = train_data.map( lambda x: tf.image.resize_with_crop_or_pad(x, 140, 140) 
+                              ).map( lambda x: tf.image.resize(x, (32, 32)) )
     train_data = train_data.map( lambda x: x / 255 ) # rescale [0,255] -> [0,1]
     
     # TRAINING LOOP CAN GO HERE
     epochs = 3
     for epoch in range(epochs):
         print("epoch", epoch)
-        
+
         # randomly flip images
         train_data_flipped = train_data.map( lambda x: tf.image.random_flip_left_right(x) )
 
