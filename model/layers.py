@@ -2,17 +2,15 @@ import tensorflow as tf
 import keras.layers as layers
 import configs
 
+
 class ConditionalFullPreActivationBlock(layers.Layer):
-    def __init__(self, activation, downsample, filters, kernel_size, dilation):
+    def __init__(self, activation, filters, kernel_size=3, dilation=1):
         super(ConditionalFullPreActivationBlock, self).__init__()
         # todo: check why 2 preactivation_blocks blocks, does it work with 1?
 
-        self.C = None  # todo
-        self.L = configs.config_values.L
-
-        self.norm1 = ConditionalInstanceNormalizationPlusPlus2D(self.C, self.L)
+        self.norm1 = ConditionalInstanceNormalizationPlusPlus2D()
         self.conv1 = layers.Conv2D(filters, kernel_size, dilation_rate=dilation)
-        self.norm2 = ConditionalInstanceNormalizationPlusPlus2D(self.C, self.L)
+        self.norm2 = ConditionalInstanceNormalizationPlusPlus2D()
         self.conv2 = layers.Conv2D(filters, kernel_size, dilation_rate=dilation)
         self.activation = activation
 
@@ -29,8 +27,8 @@ class ConditionalFullPreActivationBlock(layers.Layer):
 
 
 class RCUBlock(ConditionalFullPreActivationBlock):
-    def __init__(self, activation, downsample, filters, kernel_size, dilation):
-        super(RCUBlock, self).__init__(activation, downsample, filters, kernel_size, dilation)
+    def __init__(self, activation, filters, kernel_size=3, dilation=1):
+        super(RCUBlock, self).__init__(activation, filters, kernel_size, dilation)
 
 
 class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
@@ -60,7 +58,7 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
 
 
 class ConditionalChainedResidualPooling2D(layers.Layer):
-    def __init__(self, n_blocks, activation, filters, pooling_size, kernel_size):
+    def __init__(self, n_blocks, activation, filters, kernel_size=3, pooling_size=5):
         super(ConditionalChainedResidualPooling2D, self).__init__()
         self.activation1 = activation
         self.n_blocks = n_blocks
@@ -83,8 +81,6 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
         return x_residual
 
 
-
-
 # class ResidualConvUnit(layers.Layer):
 #     def __init__(self, filters, kernel_size=3):
 #         super(ResidualConvUnit, self).__init__()
@@ -101,18 +97,23 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
 #         return tf.add(x, input)
 #
 class MultiResolutionFusion(layers.Layer):
-    def __init__(self, filters, kernel_size=3, has_low_input=True):
+    def __init__(self, filters, kernel_size=3):
         super(MultiResolutionFusion, self).__init__()
 
-        self.has_low_input = has_low_input
+        self.filters = filters
+        self.kernel_size = kernel_size
 
-        if has_low_input:
-            self.conv2d_low = layers.Conv2D(filters, kernel_size, padding='same')
-        self.conv2d_high = layers.Conv2D(filters, kernel_size, padding='same')
+        self.conv2d_low = None
+        self.conv2d_high = None
+
+    def build(self, input_shape):
+        self.conv2d_high = layers.Conv2D(self.filters, self.kernel_size, padding='same')
+        if len(input_shape) == 2:
+            self.conv2d_low = layers.Conv2D(self.filters, self.kernel_size, padding='same')
 
     def call(self, inputs, **kwargs):
         if len(inputs) == 1:
-            high_input = inputs
+            high_input = inputs[0]
             x = self.conv2d_high(high_input)
             return x
         elif len(inputs) == 2:
@@ -126,3 +127,62 @@ class MultiResolutionFusion(layers.Layer):
             high_input = self.conv2d_high(high_input)
 
             return low_input + high_input
+
+
+class RefineBlock(layers.Layer):
+    def __init__(self, n_blocks_crp, activation, filters, kernel_size=3, pooling_size=5):
+        super(RefineBlock, self).__init__()
+
+        self.activation = activation
+        self.filters = filters
+        self.kernel_size = kernel_size
+
+        # NOTE: they use 2 block, we use 1 for now
+        self.rcu_high = None
+        self.rcu_low = None
+
+        self.mrf = MultiResolutionFusion(filters, kernel_size)
+
+        self.crp = ConditionalChainedResidualPooling2D(n_blocks_crp, activation, filters, kernel_size)
+
+        self.rcu_end = RCUBlock(activation, filters, kernel_size)
+
+    def build(self, input_shape):
+        self.rcu_high = RCUBlock(self.activation, self.filters, self.kernel_size)
+        if len(input_shape) == 2:
+            self.rcu_low = RCUBlock(self.activation, self.filters, self.kernel_size)
+
+    def call(self, inputs, **kwargs):
+        low_input = None
+        if len(inputs) == 1:
+            high_input = inputs[0]
+
+            high_input = self.rcu_high(high_input)
+            x = self.mrf([high_input])
+
+        elif len(inputs) == 2:
+            high_input, low_input = inputs
+
+            high_input = self.rcu_high(high_input)
+            low_input = self.rcu_low(low_input)
+            x = self.mrf([high_input, low_input])
+
+        x = self.crp(x)
+        x = self.rcu_end(x)
+        return x
+
+# class TestLayer(layers.Layer):
+#     def __init__(self):
+#         super(TestLayer, self).__init__()
+#
+#     def build(self, input_shape):
+#         print(input_shape)
+#
+#     def call(self, inputs, **kwargs):
+#         return inputs
+#
+#
+# if __name__ == '__main__':
+#     layer = TestLayer()
+#     x = [tf.convert_to_tensor(list(range(10))), None]
+#     output = layer(x)
