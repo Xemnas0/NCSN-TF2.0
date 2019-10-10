@@ -4,7 +4,7 @@ import tensorflow_datasets as tfds
 
 def load_data(dataset_name):
     # load data from tfds, TODO: add support for local datasets?
-    data_generators = tfds.load(name=dataset_name, batch_size=-1, data_dir="data")
+    data_generators = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", shuffle_files=True)
     train = tf.data.Dataset.from_tensor_slices(data_generators['train']['image'])
     test = tf.data.Dataset.from_tensor_slices(data_generators['test']['image'])
     return train.concatenate(test)  # we are using the whole dataset (train+test)
