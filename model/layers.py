@@ -28,9 +28,35 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         return skip_x + x
 
 
+class RCUBlock(ConditionalFullPreActivationBlock):
+    def __init__(self, activation, downsample, filters, kernel_size, dilation):
+        super(RCUBlock, self).__init__(activation, downsample, filters, kernel_size, dilation)
+
+
 class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
-    def __init__(self, C, L):
-        pass
+    def __init__(self, L):
+        super(ConditionalInstanceNormalizationPlusPlus2D, self).__init__()
+        self.L = L
+
+    def build(self, input_shape):
+        self.C = input_shape[1]  # FIXME: I might not be what you think I am. Zero?
+        self.alpha = self.add_weight(shape=[self.L, self.C])
+        self.beta = self.add_weight(shape=[self.L, self.C])
+        self.gamma = self.add_weight(shape=[self.L, self.C])
+
+    def call(self, inputs, **kwargs):
+        x, idx_sigmas = inputs
+        mu, s = tf.nn.moments(x, axes=[1])  # FIXME: I might not be what you think I am. One?
+        m, v = tf.nn.moments(mu, axes=[0])
+
+        # FIXME: probably will break
+        first = self.gamma[idx_sigmas, :] * (x - mu) / s
+        second = self.beta[idx_sigmas, :]
+        third = self.alpha[idx_sigmas, :] * (mu - m) / v
+
+        z = first + second + third
+
+        return z
 
 
 # class ResidualConvUnit(layers.Layer):
