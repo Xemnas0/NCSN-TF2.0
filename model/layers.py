@@ -143,7 +143,7 @@ class RefineBlock(layers.Layer):
 
         self.mrf = MultiResolutionFusion(filters, kernel_size)
 
-        self.crp = ConditionalChainedResidualPooling2D(n_blocks_crp, activation, filters, kernel_size)
+        self.crp = ConditionalChainedResidualPooling2D(n_blocks_crp, activation, filters, kernel_size, pooling_size)
 
         self.rcu_end = RCUBlock(activation, filters, kernel_size)
 
