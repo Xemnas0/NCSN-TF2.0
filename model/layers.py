@@ -8,6 +8,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
 
         self.C = None  # todo
         self.L = None  # todo
+
         self.norm1 = ConditionalInstanceNormalizationPlusPlus2D(self.C, self.L)
         self.conv1 = layers.Conv2D(filters, kernel_size, dilation_rate=dilation)
         self.norm2 = ConditionalInstanceNormalizationPlusPlus2D(self.C, self.L)
@@ -16,10 +17,10 @@ class ConditionalFullPreActivationBlock(layers.Layer):
 
     def call(self, inputs, **kwargs):
         skip_x, idx_sigmas = inputs
-        x = self.norm1(skip_x, idx_sigmas)
+        x = self.norm1((skip_x, idx_sigmas))
         x = self.activation(x)
         x = self.conv1(x)
-        x = self.norm2(x)
+        x = self.norm2((x, idx_sigmas))
         x = self.activation(x)
         x = self.conv2(x)
 
@@ -45,6 +46,8 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
 #         x = self.conv2(x)
 #         return tf.add(x, input)
 #
-# class MultiResolutionFusion(layers.Layer):
-#     def __init__(self, filters, kernel_size=3):
-#         super(MultiResolutionFusion, self).__init__()
+class MultiResolutionFusion(layers.Layer):
+    def __init__(self, filters, kernel_size=3):
+        super(MultiResolutionFusion, self).__init__()
+
+
