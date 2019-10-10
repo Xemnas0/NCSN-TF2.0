@@ -1,6 +1,6 @@
 import tensorflow as tf
 import keras.layers as layers
-
+import configs
 
 class ConditionalFullPreActivationBlock(layers.Layer):
     def __init__(self, activation, downsample, filters, kernel_size, dilation):
@@ -8,7 +8,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         # todo: check why 2 preactivation_blocks blocks, does it work with 1?
 
         self.C = None  # todo
-        self.L = None  # todo
+        self.L = configs.config_values.L
 
         self.norm1 = ConditionalInstanceNormalizationPlusPlus2D(self.C, self.L)
         self.conv1 = layers.Conv2D(filters, kernel_size, dilation_rate=dilation)
@@ -34,9 +34,9 @@ class RCUBlock(ConditionalFullPreActivationBlock):
 
 
 class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
-    def __init__(self, L):
+    def __init__(self):
         super(ConditionalInstanceNormalizationPlusPlus2D, self).__init__()
-        self.L = L
+        self.L = configs.config_values.L
 
     def build(self, input_shape):
         self.C = input_shape[1]  # FIXME: I might not be what you think I am. Zero?
@@ -57,6 +57,32 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
         z = first + second + third
 
         return z
+
+
+class ConditionalChainedResidualPooling2D(layers.Layer):
+    def __init__(self, n_blocks, activation, filters, pooling_size, kernel_size):
+        super(ConditionalChainedResidualPooling2D, self).__init__()
+        self.activation1 = activation
+        self.n_blocks = n_blocks
+        for n in range(n_blocks):
+            setattr(self, f'norm{n}', ConditionalInstanceNormalizationPlusPlus2D())
+            setattr(self, f'conv{n}', layers.Conv2D(filters, kernel_size, padding='same'))
+        self.pooling = layers.AveragePooling2D(pooling_size, padding='same')
+
+    def call(self, inputs, **kwargs):
+        x, idx_sigmas = inputs
+        x_residual = self.activation1(x)
+        x = x_residual
+        for n in range(self.n_blocks):
+            norm = getattr(self, f'norm{n}')
+            conv = getattr(self, f'conv{n}')
+            x = norm(x)
+            x = self.pooling(x)
+            x = conv(x)
+            x_residual += x
+        return x_residual
+
+
 
 
 # class ResidualConvUnit(layers.Layer):
