@@ -3,6 +3,19 @@ import keras.layers as layers
 import configs
 
 
+class DilatedConv2D(layers.Layer):
+    def __init__(self, filters, kernel_size=3, dilation=1, padding=1, strides=1):
+        super(DilatedConv2D, self).__init__()
+
+        self.padding = layers.ZeroPadding2D(padding)
+        self.conv = layers.Conv2D(filters, kernel_size, strides=strides, dilation_rate=dilation, padding='valid')
+        
+    def call(self, inputs, **kwargs):
+        x = self.padding(inputs)
+        x = self.conv(x)
+        return x
+
+
 class ConditionalFullPreActivationBlock(layers.Layer):
     def __init__(self, activation, filters, kernel_size=3, dilation=1):
         super(ConditionalFullPreActivationBlock, self).__init__()
