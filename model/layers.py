@@ -93,7 +93,7 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
         for n in range(self.n_blocks):
             norm = getattr(self, f'norm{n}')
             conv = getattr(self, f'conv{n}')
-            x = norm(x)
+            x = norm([x, idx_sigmas])
             x = self.pooling(x)
             x = conv(x)
             x_residual += x
@@ -122,27 +122,33 @@ class MultiResolutionFusion(layers.Layer):
         self.filters = filters
         self.kernel_size = kernel_size
 
+        self.conv2d_high = layers.Conv2D(self.filters, self.kernel_size, padding='same')
+        self.norm_high = ConditionalInstanceNormalizationPlusPlus2D()
         self.conv2d_low = None
-        self.conv2d_high = None
+        self.norm_low = None
 
     def build(self, input_shape):
-        self.conv2d_high = layers.Conv2D(self.filters, self.kernel_size, padding='same')
-        if len(input_shape) == 2:
+        if len(input_shape[0]) == 2:
+            self.norm_low = ConditionalInstanceNormalizationPlusPlus2D()
             self.conv2d_low = layers.Conv2D(self.filters, self.kernel_size, padding='same')
 
     def call(self, inputs, **kwargs):
-        if len(inputs) == 1:
-            high_input = inputs[0]
-            x = self.conv2d_high(high_input)
+        idx_sigmas = inputs[1]
+        if len(inputs[0]) == 1:
+            high_input = inputs[0][0]
+            x = self.norm_high([high_input, idx_sigmas])
+            x = self.conv2d_high(x)
             return x
-        elif len(inputs) == 2:
+        elif len(inputs[0]) == 2:
             high_input, low_input = inputs
 
             # FIXME: make me any beautiful
             upsample = layers.UpSampling2D(high_input.shape)
 
+            low_input = self.norm_low([low_input, idx_sigmas])
             low_input = self.conv2d_low(low_input)
             low_input = upsample(low_input)
+            high_input = self.norm_high([high_input, idx_sigmas])
             high_input = self.conv2d_high(high_input)
 
             return low_input + high_input
@@ -173,21 +179,22 @@ class RefineBlock(layers.Layer):
 
     def call(self, inputs, **kwargs):
         low_input = None
-        if len(inputs) == 1:
-            high_input = inputs[0]
+        idx_sigmas = inputs[1]
+        if len(inputs[0]) == 1:
+            high_input = inputs[0][0]
 
             high_input = self.rcu_high(high_input)
             x = self.mrf([high_input])
 
-        elif len(inputs) == 2:
-            high_input, low_input = inputs
+        elif len(inputs[0]) == 2:
+            high_input, low_input = inputs[0]
 
             high_input = self.rcu_high(high_input)
             low_input = self.rcu_low(low_input)
             x = self.mrf([high_input, low_input])
 
-        x = self.crp(x)
-        x = self.rcu_end(x)
+        x = self.crp(x, idx_sigmas)
+        x = self.rcu_end(x, idx_sigmas)
         return x
 
 # class TestLayer(layers.Layer):
