@@ -9,7 +9,17 @@ class DilatedConv2D(layers.Layer):
 
         self.padding = layers.ZeroPadding2D(padding)
         self.conv = layers.Conv2D(filters, kernel_size, strides=strides, dilation_rate=dilation, padding='valid')
-        
+        self.filters = filters
+
+    def build(self, input_shape):
+        print(f"Output shape: {self.compute_output_shape(input_shape)}")
+
+    def compute_output_shape(self, input_shape):
+        # print(f"input shape: {input_shape}")
+
+        output_shape = (input_shape[0], input_shape[1], input_shape[2], self.filters)
+        return output_shape
+
     def call(self, inputs, **kwargs):
         x = self.padding(inputs)
         x = self.conv(x)
@@ -29,6 +39,11 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         self.pooling_skip = layers.AveragePooling2D(pool_size) if pool_size > 0 else None
         self.activation = activation
 
+        self.increase_channels_skip = layers.Conv2D(filters, kernel_size=1, padding='same')
+        
+    def build(self, input_shape):
+        print(f"Output shape: {self.compute_output_shape(input_shape)}")
+
     def call(self, inputs, **kwargs):
         skip_x, idx_sigmas = inputs
         x = self.norm1([skip_x, idx_sigmas])
@@ -37,6 +52,9 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         x = self.norm2([x, idx_sigmas])
         x = self.activation(x)
         x = self.conv2(x)
+
+        if x.shape != skip_x.shape:
+            skip_x = self.increase_channels_skip(skip_x)
 
         if self.pooling is not None:
             x = self.pooling(x)
@@ -55,21 +73,26 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
         super(ConditionalInstanceNormalizationPlusPlus2D, self).__init__()
         self.L = configs.config_values.num_L
 
+        self.init_weights = 'random_normal' #tf.initializers.RandomNormal(1, 0.02)
+        self.init_bias = 'zeros'
+
     def build(self, input_shape):
         self.C = input_shape[0][-1]  # FIXME: I might not be what you think I am. Zero?
-        self.alpha = self.add_weight(shape=(self.L, self.C), initializer=tf.keras.initializers.RandomNormal(1, 0.02)) # TODO: maybe change init
-        self.beta = self.add_weight(shape=(self.L, self.C), initializer='zeros')
-        self.gamma = self.add_weight(shape=(self.L, self.C), initializer=tf.keras.initializers.RandomNormal(1, 0.02))
+        self.alpha = self.add_weight(shape=(self.L, 1, 1, self.C), initializer=self.init_weights) # TODO: maybe change init
+        self.beta = self.add_weight(shape=(self.L, 1, 1, self.C), initializer=self.init_bias)
+        self.gamma = self.add_weight(shape=(self.L, 1, 1, self.C), initializer=self.init_weights)
+
+        super(ConditionalInstanceNormalizationPlusPlus2D, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
         x, idx_sigmas = inputs
-        mu, s = tf.nn.moments(x, axes=[1])  # FIXME: I might not be what you think I am. One?
+        mu, s = tf.nn.moments(x, axes=[-1], keepdims=True)  # FIXME: I might not be what you think I am. One?
         m, v = tf.nn.moments(mu, axes=[0])
 
-        # FIXME: probably will break
-        first = self.gamma[idx_sigmas, :] * (x - mu) / s
-        second = self.beta[idx_sigmas, :]
-        third = self.alpha[idx_sigmas, :] * (mu - m) / v
+        # FIXED (maybe)
+        first = tf.gather(self.gamma, idx_sigmas) * (x - mu) / s
+        second = tf.gather(self.beta, idx_sigmas)
+        third = tf.gather(self.alpha, idx_sigmas) * (mu - m) / v
 
         z = first + second + third
 
