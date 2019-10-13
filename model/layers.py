@@ -32,8 +32,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         self.conv1 = DilatedConv2D(filters, kernel_size, dilation, padding)
         self.norm2 = ConditionalInstanceNormalizationPlusPlus2D()
         self.conv2 = DilatedConv2D(filters, kernel_size, dilation, padding)
-        self.pooling = layers.AveragePooling2D(pool_size) if pool_size > 0 else None
-        self.pooling_skip = layers.AveragePooling2D(pool_size) if pool_size > 0 else None
+        self.pooling_size = pool_size
         self.activation = activation
 
         self.increase_channels_skip = layers.Conv2D(filters, kernel_size=1, padding='same')
@@ -60,9 +59,9 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         if x.shape != skip_x.shape:
             skip_x = self.increase_channels_skip(skip_x)
 
-        if self.pooling is not None:
-            x = self.pooling(x)
-            skip_x = self.pooling_skip(skip_x)
+        if self.pooling_size > 0:
+            x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='SAME')
+            skip_x = tf.nn.avg_pool2d(skip_x, self.pooling_size, strides=1, padding='SAME')
 
         return skip_x + x
 
