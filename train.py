@@ -18,9 +18,10 @@ if __name__ == "__main__":
     # loading dataset
     train_data = get_data_generator(args.dataset)
     num_batches = int(tf.data.experimental.cardinality(train_data))
+    num_filters = {'mnist': 64, 'cifar10': 128, 'celeb_a': 128}
 
     # initialize model
-    model = RefineNet(filters=5, activation=tf.nn.elu)
+    model = RefineNet(filters=num_filters[args.dataset], activation=tf.nn.elu)
 
     # declare optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.01) # 10 times larger than in their paper
@@ -34,7 +35,9 @@ if __name__ == "__main__":
     print("=========================================")
     for epoch in range(epochs):
         progress_bar = tqdm(enumerate(train_data), total=num_batches)
-        progress_bar.set_description(f'loss {0:.3f}')
+        progress_bar.set_description(f'epoch {epoch}/{epochs} | current loss ? | average loss ?')
+
+        total_loss = 0
         for i, data_batch in progress_bar:
             idx_sigmas = tf.random.uniform([data_batch.shape[0]], minval=0, maxval=args.num_L, dtype=tf.dtypes.int32)
             sigmas = tf.gather(sigma_levels, idx_sigmas)
@@ -47,7 +50,8 @@ if __name__ == "__main__":
                 gradients = t.gradient(batch_loss, model.trainable_variables)
             optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-            progress_bar.set_description(f'loss {batch_loss:.3f}')
+            total_loss += batch_loss
+            progress_bar.set_description(f'epoch {epoch}/{epochs} | current loss {batch_loss:.3f} | average loss {total_loss/(i+1):.3f}')
     print("=========================================")
 
     # NOTE bad way to choose the best model - saving all checkpoints and then testing after
