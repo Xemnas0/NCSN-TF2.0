@@ -56,12 +56,17 @@ class RefineNet(keras.Model):
 
 
 if __name__ == '__main__':
+    import utils
+    import configs
     import tensorflow_datasets as tfds
+
+    args = utils.get_command_line_args()
+    configs.config_values = args
 
     data_generators = tfds.load(name="cifar10", split="test", batch_size=-1)
     test = tf.cast(data_generators['image'], tf.float32)
 
-    x = tf.expand_dims(test[:2], 0)
-    idx_sigmas = tf.convert_to_tensor([3, 9])
+    x = test[:3]
+    idx_sigmas = tf.convert_to_tensor([3, 9, 3])
     model = RefineNet(5, tf.nn.elu)
     output = model([x, idx_sigmas])

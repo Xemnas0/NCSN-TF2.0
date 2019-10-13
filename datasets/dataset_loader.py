@@ -7,8 +7,7 @@ def load_data(dataset_name):
     data_generators = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", shuffle_files=True)
     train = tf.data.Dataset.from_tensor_slices(data_generators['train']['image'])
     test = tf.data.Dataset.from_tensor_slices(data_generators['test']['image'])
-    return train.concatenate(test)  # we are using the whole dataset (train+test)
-
+    return train.concatenate(test)  # TODO: split
 
 def get_data_generator(dataset_name):
     train_data = load_data(dataset_name)
