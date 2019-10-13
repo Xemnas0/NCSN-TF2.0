@@ -31,10 +31,10 @@ class ConditionalFullPreActivationBlock(layers.Layer):
 
     def call(self, inputs, **kwargs):
         skip_x, idx_sigmas = inputs
-        x = self.norm1((skip_x, idx_sigmas))
+        x = self.norm1([skip_x, idx_sigmas])
         x = self.activation(x)
         x = self.conv1(x)
-        x = self.norm2((x, idx_sigmas))
+        x = self.norm2([x, idx_sigmas])
         x = self.activation(x)
         x = self.conv2(x)
 
@@ -53,13 +53,13 @@ class RCUBlock(ConditionalFullPreActivationBlock):
 class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
     def __init__(self):
         super(ConditionalInstanceNormalizationPlusPlus2D, self).__init__()
-        self.L = configs.config_values.L
+        self.L = configs.config_values.num_L
 
     def build(self, input_shape):
-        self.C = input_shape[1]  # FIXME: I might not be what you think I am. Zero?
-        self.alpha = self.add_weight(shape=[self.L, self.C])
-        self.beta = self.add_weight(shape=[self.L, self.C])
-        self.gamma = self.add_weight(shape=[self.L, self.C])
+        self.C = input_shape[0][-1]  # FIXME: I might not be what you think I am. Zero?
+        self.alpha = self.add_weight(shape=(self.L, self.C), initializer=tf.keras.initializers.RandomNormal(1, 0.02)) # TODO: maybe change init
+        self.beta = self.add_weight(shape=(self.L, self.C), initializer='zeros')
+        self.gamma = self.add_weight(shape=(self.L, self.C), initializer=tf.keras.initializers.RandomNormal(1, 0.02))
 
     def call(self, inputs, **kwargs):
         x, idx_sigmas = inputs
