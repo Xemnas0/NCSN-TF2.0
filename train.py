@@ -8,6 +8,11 @@ from model.refinenet import RefineNet
 from losses.losses import loss_per_batch
 from tqdm import tqdm
 
+import os
+
+tf.compat.v1.disable_eager_execution()
+
+
 def train(model, inputs, learning_rate):
     pass
 
@@ -18,7 +23,7 @@ if __name__ == "__main__":
     # loading dataset
     train_data = get_data_generator(args.dataset)
     num_batches = int(tf.data.experimental.cardinality(train_data))
-    num_filters = {'mnist': 64, 'cifar10': 128, 'celeb_a': 128}
+    num_filters = {'mnist': 16, 'cifar10': 128, 'celeb_a': 128}
 
     # initialize model
     model = RefineNet(filters=num_filters[args.dataset], activation=tf.nn.elu)
@@ -31,6 +36,11 @@ if __name__ == "__main__":
 
     # array of sigma levles
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(args.sigma_low), tf.math.log(args.sigma_high), args.num_L))
+
+    # Path for saving the model
+    directory = './saved_models/'
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
     print("=========================================")
     for epoch in range(epochs):
@@ -52,6 +62,11 @@ if __name__ == "__main__":
 
             total_loss += batch_loss
             progress_bar.set_description(f'epoch {epoch}/{epochs} | current loss {batch_loss:.3f} | average loss {total_loss/(i+1):.3f}')
+
+        # TODO: maybe save also info about the sigmas
+            model.save_weights(directory+f'refinenet_{args.dataset}_epoch{epoch}.h5', overwrite=False, save_format='h5')
+            print("Model saved successfully! Congratulations! Go celebrate.")
+
     print("=========================================")
 
     # NOTE bad way to choose the best model - saving all checkpoints and then testing after
