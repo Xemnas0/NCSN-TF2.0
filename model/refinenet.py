@@ -34,7 +34,6 @@ class RefineNet(keras.Model):
 
     def call(self, inputs, mask=None):
         x, idx_sigmas = inputs
-        print(x.shape)
         x = self.increase_channels(x)
 
         output_1 = self.preact_1([x, idx_sigmas])
