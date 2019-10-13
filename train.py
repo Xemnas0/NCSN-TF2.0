@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     # loading dataset
     train_data = get_data_generator(args.dataset)
-    num_batches = tf.data.experimental.cardinality(train_data)
+    num_batches = int(tf.data.experimental.cardinality(train_data))
 
     # initialize model
     model = RefineNet(filters=5, activation=tf.nn.elu)
@@ -33,7 +33,7 @@ if __name__ == "__main__":
 
     print("=========================================")
     for epoch in range(epochs):
-        progress_bar = tqdm(enumerate(train_data))
+        progress_bar = tqdm(enumerate(train_data), total=num_batches)
         progress_bar.set_description(f'loss {0:.3f}')
         for i, data_batch in progress_bar:
             idx_sigmas = tf.random.uniform([data_batch.shape[0]], minval=0, maxval=args.num_L, dtype=tf.dtypes.int32)
