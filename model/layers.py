@@ -26,6 +26,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         self.norm2 = ConditionalInstanceNormalizationPlusPlus2D()
         self.conv2 = DilatedConv2D(filters, kernel_size, dilation, padding)
         self.pooling = layers.AveragePooling2D(pool_size) if pool_size > 0 else None
+        self.pooling_skip = layers.AveragePooling2D(pool_size) if pool_size > 0 else None
         self.activation = activation
 
     def call(self, inputs, **kwargs):
@@ -39,6 +40,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
 
         if self.pooling is not None:
             x = self.pooling(x)
+            skip_x = self.pooling_skip(skip_x)
 
         return skip_x + x
 
