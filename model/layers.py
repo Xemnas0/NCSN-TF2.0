@@ -1,5 +1,5 @@
 import tensorflow as tf
-import keras.layers as layers
+import keras.layers as layers # TODO: check if we should use keras or tf.keras
 import configs
 
 
@@ -17,14 +17,15 @@ class DilatedConv2D(layers.Layer):
 
 
 class ConditionalFullPreActivationBlock(layers.Layer):
-    def __init__(self, activation, filters, kernel_size=3, dilation=1):
+    def __init__(self, activation, filters, kernel_size=3, dilation=1, padding=1, pool_size=0):
         super(ConditionalFullPreActivationBlock, self).__init__()
         # todo: check why 2 preactivation_blocks blocks, does it work with 1?
 
         self.norm1 = ConditionalInstanceNormalizationPlusPlus2D()
-        self.conv1 = layers.Conv2D(filters, kernel_size, dilation_rate=dilation)
+        self.conv1 = DilatedConv2D(filters, kernel_size, dilation, padding)
         self.norm2 = ConditionalInstanceNormalizationPlusPlus2D()
-        self.conv2 = layers.Conv2D(filters, kernel_size, dilation_rate=dilation)
+        self.conv2 = DilatedConv2D(filters, kernel_size, dilation, padding)
+        self.pooling = layers.AveragePooling2D(pool_size) if pool_size > 0 else None
         self.activation = activation
 
     def call(self, inputs, **kwargs):
@@ -35,6 +36,9 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         x = self.norm2((x, idx_sigmas))
         x = self.activation(x)
         x = self.conv2(x)
+
+        if self.pooling is not None:
+            x = self.pooling(x)
 
         return skip_x + x
 
