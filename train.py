@@ -38,7 +38,8 @@ def train():
     if configs.config_values.resume:
         latest_checkpoint = tf.train.latest_checkpoint(save_dir)
         print("loading model from checkpoint ", latest_checkpoint)
-        ckpt = tf.train.Checkpoint(optimizer=optimizer, model=model)
+        step = tf.Variable(0)
+        ckpt = tf.train.Checkpoint(step=step, optimizer=optimizer, model=model)
         ckpt.restore(latest_checkpoint)
 
         model = ckpt.model
@@ -82,7 +83,8 @@ def train():
 
             if iteration % configs.config_values.checkpoint_freq == 0:
                 # TODO: maybe save also info about the sigmas
-                ckpt = tf.train.Checkpoint(optimizer=optimizer, model=model)
+                ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
+                ckpt.step.assign_add(iteration)
                 ckpt.save(save_dir+f"refinenet_{configs.config_values.dataset}_iteration_{iteration}")
 
     # NOTE bad way to choose the best model - saving all checkpoints and then testing after
