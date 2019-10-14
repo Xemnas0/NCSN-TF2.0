@@ -30,7 +30,7 @@ def train():
         # os.makedirs(save_dir)
 
     start_time = datetime.now().strftime("%y%m%d-%H%M")
-    log_dir = configs.config_values.log_dir + configs.config_values.dataset
+    log_dir = configs.config_values.log_dir + configs.config_values.dataset + "/"
     summary_writer = tf.summary.create_file_writer(log_dir+start_time)
 
     # initialize model
