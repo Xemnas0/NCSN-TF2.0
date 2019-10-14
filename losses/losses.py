@@ -1,7 +1,7 @@
 import tensorflow as tf
 import configs
 
-#@tf.function
+@tf.function
 def loss_per_batch(score, x_perturbed, x, sigmas):
     l_batch = tf.norm(sigmas * score + (x_perturbed - x) / sigmas, axis=(1, 2)) #norm over height, width
     l_batch = tf.norm(l_batch, axis=-1) # norm over channels (1 or 3)
