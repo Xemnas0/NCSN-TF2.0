@@ -16,7 +16,10 @@ def get_command_line_args():
                         help="batch size (default: 128)")
     parser.add_argument('--checkpoint_dir', default='./saved_models/',
                         help="folder for saving model checkpoints")
-    parser.add_argument('--checkpoint_freq', default=10,
-                        help="how often to save a model checkpoint (default: 10 epochs)")
+    parser.add_argument('--checkpoint_freq', default=5000,
+                        help="how often to save a model checkpoint (default: 5000 iterations)")
+    parser.add_argument('--resume', action='store_true',
+                        help="whether to resume from latest checkpoint (default: False)")
+
 
     return parser.parse_args()

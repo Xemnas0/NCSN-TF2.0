@@ -30,9 +30,19 @@ def train():
 
     # initialize model
     model = RefineNet(filters=num_filters[configs.config_values.dataset], activation=tf.nn.elu)
-
+    
     # declare optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.01) # NOTE 10 times larger than in their paper
+
+    # if resuming training, overwrite model parameters from checkpoint
+    if configs.config_values.resume:
+        latest_checkpoint = tf.train.latest_checkpoint(save_dir)
+        print("loading model from checkpoint ", latest_checkpoint)
+        ckpt = tf.train.Checkpoint(optimizer=optimizer, model=model)
+        ckpt.restore(latest_checkpoint)
+
+        model = ckpt.model
+        optimizer = ckpt.optimizer
 
     # array of sigma levels
     # generate geometric sequence of values between sigma_low (0.01) and sigma_high (1.0)
@@ -54,6 +64,7 @@ def train():
 
         total_loss = 0
         for i, data_batch in progress_bar:
+            iteration = (epoch+1)*i
             idx_sigmas = tf.random.uniform([data_batch.shape[0]], minval=0, maxval=args.num_L, dtype=tf.dtypes.int32)
             sigmas = tf.gather(sigma_levels, idx_sigmas)
             sigmas = tf.reshape(sigmas, shape=(data_batch.shape[0], 1, 1, 1))
@@ -69,11 +80,10 @@ def train():
             progress_bar.set_description(f'epoch {epoch}/{epochs} | '
                 f'current loss {batch_loss:.3f} | average loss {total_loss/(i+1):.3f}')
 
-            if epoch % configs.config_values.checkpoint_freq == 0:
+            if iteration % configs.config_values.checkpoint_freq == 0:
                 # TODO: maybe save also info about the sigmas
-                model.save_weights(save_dir+f'refinenet_{configs.config_values.dataset}_epoch{epoch}.h5', 
-                    overwrite=False, save_format='h5')
-                print("Model saved successfully! Congratulations! Go celebrate.")
+                ckpt = tf.train.Checkpoint(optimizer=optimizer, model=model)
+                ckpt.save(save_dir+f"refinenet_{configs.config_values.dataset}_iteration_{iteration}")
 
     # NOTE bad way to choose the best model - saving all checkpoints and then testing after
 
