@@ -25,7 +25,7 @@ def train():
     num_filters = {'mnist': 16, 'cifar10': 128, 'celeb_a': 128} # NOTE change mnist back to 64
 
     # path for saving the model(s)
-    save_dir = configs.config_values.checkpoint_dir + configs.config_values.dataset
+    save_dir = configs.config_values.checkpoint_dir + configs.config_values.dataset + '/'
     # if not os.path.exists(save_dir):
         # os.makedirs(save_dir)
 
