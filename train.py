@@ -49,7 +49,7 @@ def train():
     # generate geometric sequence of values between sigma_low (0.01) and sigma_high (1.0)
     sigma_levels = tf.math.exp(tf.linspace( tf.math.log(configs.config_values.sigma_low), 
                                             tf.math.log(configs.config_values.sigma_high), 
-                                            args.num_L ))
+                                            configs.config_values.num_L ))
 
     # training loop
     print(f'dataset: {configs.config_values.dataset}, '
@@ -66,7 +66,7 @@ def train():
         total_loss = 0
         for i, data_batch in progress_bar:
             iteration = (epoch+1)*i
-            idx_sigmas = tf.random.uniform([data_batch.shape[0]], minval=0, maxval=args.num_L, dtype=tf.dtypes.int32)
+            idx_sigmas = tf.random.uniform([data_batch.shape[0]], minval=0, maxval=configs.config_values.num_L, dtype=tf.dtypes.int32)
             sigmas = tf.gather(sigma_levels, idx_sigmas)
             sigmas = tf.reshape(sigmas, shape=(data_batch.shape[0], 1, 1, 1))
             data_batch_perturbed = data_batch + tf.random.normal(shape=data_batch.shape) * sigmas
