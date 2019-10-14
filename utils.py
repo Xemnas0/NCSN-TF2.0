@@ -10,13 +10,13 @@ def get_command_line_args():
                         help="lowest value for noise (default: 0.01)")
     parser.add_argument('--sigma_high', default=1.0, type=float,
                         help="highest value for noise (default: 1.0)")
-    parser.add_argument('--epochs', default=300, type=int,
-                        help="number of epochs to train the model for (default: 300)")
+    parser.add_argument('--iterations', default=200000, type=int,
+                        help="number of iterations to train the model for (default: 200000)")
     parser.add_argument('--batch_size', default=128, type=int,
                         help="batch size (default: 128)")
     parser.add_argument('--checkpoint_dir', default='./saved_models/',
                         help="folder for saving model checkpoints")
-    parser.add_argument('--checkpoint_freq', default=5000,
+    parser.add_argument('--checkpoint_freq', default=5000, type=int,
                         help="how often to save a model checkpoint (default: 5000 iterations)")
     parser.add_argument('--resume', action='store_true',
                         help="whether to resume from latest checkpoint (default: False)")
