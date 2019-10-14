@@ -81,10 +81,10 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
 
     def build(self, input_shape):
         self.C = input_shape[0][-1]  # FIXME: I might not be what you think I am. Zero?
-        self.alpha = self.add_weight(shape=(self.L, 1, 1, self.C),
+        self.alpha = self.add_weight(name=self.name+'_alpha', shape=(self.L, 1, 1, self.C),
                                      initializer=self.init_weights)  # TODO: maybe change init
-        self.beta = self.add_weight(shape=(self.L, 1, 1, self.C), initializer=self.init_bias)
-        self.gamma = self.add_weight(shape=(self.L, 1, 1, self.C), initializer=self.init_weights)
+        self.beta = self.add_weight(name=self.name+'_beta', shape=(self.L, 1, 1, self.C), initializer=self.init_bias)
+        self.gamma = self.add_weight(name=self.name+'_gamma', shape=(self.L, 1, 1, self.C), initializer=self.init_weights)
 
         super(ConditionalInstanceNormalizationPlusPlus2D, self).build(input_shape)
 
