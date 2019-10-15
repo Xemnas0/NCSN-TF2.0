@@ -14,7 +14,7 @@ class RefineNet(keras.Model):
         self.increase_channels = layers.Conv2D(filters, kernel_size=3, padding='same')
 
         self.preact_1 = ConditionalFullPreActivationBlock(activation, filters, kernel_size=3)  # FIXME: check pool size
-        self.preact_2 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, pool_size=3)
+        self.preact_2 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, pooling=True)
         self.preact_3 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=2, padding=2)
         self.preact_4 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=4, padding=4)
         # Increasing the dilation even more would not help
