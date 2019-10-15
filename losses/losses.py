@@ -16,6 +16,6 @@ def loss_per_batch(score, x_perturbed, x, sigmas):
 @tf.function
 def loss_per_batch_alternative(score, x_perturbed, x, sigmas):
     target = (x_perturbed - x) / (tf.square(sigmas))
-    loss = 0.5 * tf.reduce_sum(tf.square(score+target), axis=[1,2,3]) * tf.square(sigmas)
+    loss = 0.5 * tf.reduce_sum(tf.square(score+target), axis=[1,2,3], keepdims=True) * tf.square(sigmas)
     loss = tf.reduce_mean(loss)
     return loss
