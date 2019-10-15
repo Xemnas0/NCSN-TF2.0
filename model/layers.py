@@ -3,6 +3,11 @@ import tensorflow.keras.layers as layers  # TODO: check if we should use keras o
 import configs
 
 
+def custom_pooling(x):
+    x = sum([x[:, ::2, ::2, :], x[:, 1::2, ::2, :], x[:, ::2, 1::2, :], x[:, 1::2, 1::2, :]]) / 4.0
+    return x
+
+
 class DilatedConv2D(layers.Layer):
     def __init__(self, filters, kernel_size=3, dilation=1, padding=1, strides=1):
         super(DilatedConv2D, self).__init__()
@@ -24,7 +29,7 @@ class DilatedConv2D(layers.Layer):
 
 
 class ConditionalFullPreActivationBlock(layers.Layer):
-    def __init__(self, activation, filters, kernel_size=3, dilation=1, padding=1, pool_size=0):
+    def __init__(self, activation, filters, kernel_size=3, dilation=1, padding=1, pooling=False):
         super(ConditionalFullPreActivationBlock, self).__init__()
         # todo: check why 2 preactivation_blocks blocks, does it work with 1?
 
@@ -32,7 +37,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         self.conv1 = DilatedConv2D(filters, kernel_size, dilation, padding)
         self.norm2 = ConditionalInstanceNormalizationPlusPlus2D()
         self.conv2 = DilatedConv2D(filters, kernel_size, dilation, padding)
-        self.pooling_size = pool_size
+        self.pooling = pooling
         self.activation = activation
 
         self.increase_channels_skip = layers.Conv2D(filters, kernel_size=1, padding='same')
@@ -59,9 +64,11 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         if x.shape != skip_x.shape:
             skip_x = self.increase_channels_skip(skip_x)
 
-        if self.pooling_size > 0:
-            x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='VALID')
-            skip_x = tf.nn.avg_pool2d(skip_x, self.pooling_size, strides=1, padding='VALID')
+        if self.pooling:
+            # x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='VALID')
+            # skip_x = tf.nn.avg_pool2d(skip_x, self.pooling_size, strides=1, padding='VALID')
+            x = custom_pooling(x)
+            skip_x = custom_pooling(skip_x)
 
         return skip_x + x
 
@@ -76,7 +83,8 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
         super(ConditionalInstanceNormalizationPlusPlus2D, self).__init__()
         self.L = configs.config_values.num_L
 
-        self.init_weights = 'random_normal'  # tf.initializers.RandomNormal(1, 0.02)
+        # self.init_weights = 'random_normal'  # tf.initializers.RandomNormal(1, 0.02)
+        self.init_weights = tf.random_normal_initializer(1, 0.02)
         self.init_bias = 'zeros'
 
     def build(self, input_shape):
@@ -94,9 +102,9 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
         m, v = tf.nn.moments(mu, axes=[-1], keepdims=True)
 
         # FIXED (maybe)
-        first = tf.gather(self.gamma, idx_sigmas) * (x - mu) / s
+        first = tf.gather(self.gamma, idx_sigmas) * (x - mu) / tf.sqrt(s + 1e-6)
         second = tf.gather(self.beta, idx_sigmas)
-        third = tf.gather(self.alpha, idx_sigmas) * (mu - m) / v
+        third = tf.gather(self.alpha, idx_sigmas) * (mu - m) / tf.sqrt(v + 1e-6)
 
         z = first + second + third
 
