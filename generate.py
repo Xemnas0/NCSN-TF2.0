@@ -5,6 +5,9 @@ import configs
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 
+def clamped(x):
+    return tf.clip_by_value(x, 0, 1.0)
+
 
 def plot_grayscale(image):
     plt.imshow(image, cmap=plt.get_cmap("gray"))
@@ -32,9 +35,10 @@ def sample(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
         for t in tqdm(range(T)):
             z_t = tf.random.normal(shape=image_size, mean=0, stddev=1.0)  # TODO: check if stddev is correct
             score = model([x, tf.ones(n_images, dtype=tf.int32) * i])
-            x += alpha_i * score + tf.sqrt(alpha_i*2) * z_t
+            x = x + alpha_i * score + tf.sqrt(alpha_i*2) * z_t
 
-        plot_grayscale(x[0, :, :, 0])
+            plot_grayscale(clamped(x[0, :, :, 0]))
+            
     return x
 
 
@@ -55,9 +59,9 @@ if __name__ == '__main__':
     ckpt = tf.train.Checkpoint(step=step, optimizer=optimizer, model=model)
     ckpt.restore(latest_checkpoint)
 
-    sigma_levels = tf.math.exp(tf.linspace(tf.math.log(0.01),
-                                           tf.math.log(1.0),
+    sigma_levels = tf.math.exp(tf.linspace(tf.math.log(1.0),
+                                           tf.math.log(0.01),
                                            10))
 
-    samples = sample(model, sigma_levels, T=1000)
+    samples = sample(model, sigma_levels, T=100)
 
