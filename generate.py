@@ -32,7 +32,7 @@ def sample(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
         for t in tqdm(range(T)):
             z_t = tf.random.normal(shape=image_size, mean=0, stddev=1.0)  # TODO: check if stddev is correct
             score = model([x, tf.ones(n_images, dtype=tf.int32) * i])
-            x += alpha_i / 2 * score + tf.sqrt(alpha_i) * z_t
+            x += alpha_i * score + tf.sqrt(alpha_i*2) * z_t
 
         plot_grayscale(x[0, :, :, 0])
     return x
@@ -59,5 +59,5 @@ if __name__ == '__main__':
                                            tf.math.log(1.0),
                                            10))
 
-    samples = sample(model, sigma_levels)
+    samples = sample(model, sigma_levels, T=1000)
 
