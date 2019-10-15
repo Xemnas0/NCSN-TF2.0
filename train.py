@@ -8,7 +8,7 @@ from datetime import datetime
 # our files
 from datasets.dataset_loader import get_train_test_data
 from model.refinenet import RefineNet
-from losses.losses import loss_per_batch
+from losses.losses import loss_per_batch, loss_per_batch_alternative
 import configs
 
 
@@ -37,7 +37,7 @@ def train():
     model = RefineNet(filters=num_filters[configs.config_values.dataset], activation=tf.nn.elu)
     
     # declare optimizer
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.01) # NOTE 10 times larger than in their paper
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # NOTE 10 times larger than in their paper
 
     # if resuming training, overwrite model parameters from checkpoint
     if configs.config_values.resume:
@@ -66,6 +66,7 @@ def train():
     progress_bar = tqdm(train_data, total=total_steps, initial=step+1)
     progress_bar.set_description(f'iteration {step}/{total_steps} | current loss ?')
 
+    avg_loss = 0
     for data_batch in progress_bar:
         step += 1
         idx_sigmas = tf.random.uniform([data_batch.shape[0]], minval=0, 
@@ -77,7 +78,7 @@ def train():
 
         with tf.GradientTape() as t:
             scores = model([data_batch_perturbed, idx_sigmas])
-            current_loss = loss_per_batch(scores, data_batch_perturbed, data_batch, sigmas)
+            current_loss = loss_per_batch_alternative(scores, data_batch_perturbed, data_batch, sigmas)
             gradients = t.gradient(current_loss, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
@@ -85,13 +86,14 @@ def train():
 
         progress_bar.set_description(f'iteration {step}/{total_steps} | current loss {current_loss:.3f}')
 
+        avg_loss += current_loss
         if step % configs.config_values.checkpoint_freq == 0:
             # TODO: maybe save also info about the sigmas
             ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
             ckpt.step.assign_add(step)
             ckpt.save(save_dir+f"{start_time}_step_{step}")
-            print("saved checkpoint")
-
+            print(f"\nSaved checkpoint. Average loss: {avg_loss/configs.config_values.checkpoint_freq:.3f}")
+            avg_loss = 0
         if step == total_steps:
             return
     
@@ -105,4 +107,3 @@ if __name__ == "__main__":
     configs.config_values = args
 
     train()
-    
