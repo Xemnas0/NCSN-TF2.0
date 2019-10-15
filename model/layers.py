@@ -60,8 +60,8 @@ class ConditionalFullPreActivationBlock(layers.Layer):
             skip_x = self.increase_channels_skip(skip_x)
 
         if self.pooling_size > 0:
-            x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='SAME')
-            skip_x = tf.nn.avg_pool2d(skip_x, self.pooling_size, strides=1, padding='SAME')
+            x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='VALID')
+            skip_x = tf.nn.avg_pool2d(skip_x, self.pooling_size, strides=1, padding='VALID')
 
         return skip_x + x
 
@@ -90,8 +90,8 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
 
     def call(self, inputs, **kwargs):
         x, idx_sigmas = inputs
-        mu, s = tf.nn.moments(x, axes=[-1], keepdims=True)  # FIXME: I might not be what you think I am. One?
-        m, v = tf.nn.moments(mu, axes=[0])
+        mu, s = tf.nn.moments(x, axes=[1,2], keepdims=True)  # FIXME: I might not be what you think I am. One?
+        m, v = tf.nn.moments(mu, axes=[-1], keepdims=True)
 
         # FIXED (maybe)
         first = tf.gather(self.gamma, idx_sigmas) * (x - mu) / s
