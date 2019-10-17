@@ -10,7 +10,7 @@ from datasets.dataset_loader import get_train_test_data
 from model.refinenet import RefineNet
 from losses.losses import loss_per_batch, loss_per_batch_alternative
 import configs
-
+from generate import plot_grayscale
 
 def train():   
     # load dataset from tfds (or use downloaded version if exists)
@@ -18,7 +18,7 @@ def train():
     num_examples = int(tf.data.experimental.cardinality(train_data))
 
     # split data into batches
-    train_data = train_data.shuffle(1000).batch(configs.config_values.batch_size).repeat()
+    train_data = train_data.shuffle(1000).batch(configs.config_values.batch_size).repeat().prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
     test_data = test_data.batch(configs.config_values.batch_size)
 
     num_batches = int(tf.data.experimental.cardinality(train_data))
@@ -35,7 +35,7 @@ def train():
 
     # initialize model
     model = RefineNet(filters=num_filters[configs.config_values.dataset], activation=tf.nn.elu)
-    
+
     # declare optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # NOTE 10 times larger than in their paper
 
@@ -52,8 +52,8 @@ def train():
 
     # array of sigma levels
     # generate geometric sequence of values between sigma_low (0.01) and sigma_high (1.0)
-    sigma_levels = tf.math.exp(tf.linspace( tf.math.log(configs.config_values.sigma_low), 
-                                            tf.math.log(configs.config_values.sigma_high), 
+    sigma_levels = tf.math.exp(tf.linspace( tf.math.log(configs.config_values.sigma_low),
+                                            tf.math.log(configs.config_values.sigma_high),
                                             configs.config_values.num_L ))
 
     # training loop
@@ -61,41 +61,43 @@ def train():
           f'number of examples: {num_examples}, '
           f'batch size: {configs.config_values.batch_size}\n'
           f'training...')
-    
+
     total_steps = configs.config_values.steps
     progress_bar = tqdm(train_data, total=total_steps, initial=step+1)
     progress_bar.set_description(f'iteration {step}/{total_steps} | current loss ?')
 
-    avg_loss = 0
-    for data_batch in progress_bar:
-        step += 1
-        idx_sigmas = tf.random.uniform([data_batch.shape[0]], minval=0, 
-                                            maxval=configs.config_values.num_L, 
-                                            dtype=tf.dtypes.int32)
-        sigmas = tf.gather(sigma_levels, idx_sigmas)
-        sigmas = tf.reshape(sigmas, shape=(data_batch.shape[0], 1, 1, 1))
-        data_batch_perturbed = data_batch + tf.random.normal(shape=data_batch.shape) * sigmas
 
-        with tf.GradientTape() as t:
-            scores = model([data_batch_perturbed, idx_sigmas])
-            current_loss = loss_per_batch_alternative(scores, data_batch_perturbed, data_batch, sigmas)
-            gradients = t.gradient(current_loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    with tf.device('/GPU:0'): # For some reason, this makes everything faster
+        avg_loss = 0
+        for data_batch in progress_bar:
+            step += 1
+            idx_sigmas = tf.random.uniform([data_batch.shape[0]], minval=0,
+                                                maxval=configs.config_values.num_L,
+                                                dtype=tf.dtypes.int32)
+            sigmas = tf.gather(sigma_levels, idx_sigmas)
+            sigmas = tf.reshape(sigmas, shape=(data_batch.shape[0], 1, 1, 1))
+            data_batch_perturbed = data_batch + tf.random.normal(shape=data_batch.shape) * sigmas
 
-        tf.summary.scalar('loss', float(current_loss), step=int(step))
+            with tf.GradientTape() as t:
+                scores = model([data_batch_perturbed, idx_sigmas])
+                current_loss = loss_per_batch_alternative(scores, data_batch_perturbed, data_batch, sigmas)
+                gradients = t.gradient(current_loss, model.trainable_variables)
+            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
 
-        progress_bar.set_description(f'iteration {step}/{total_steps} | current loss {current_loss:.3f}')
+            tf.summary.scalar('loss', float(current_loss), step=int(step))
 
-        avg_loss += current_loss
-        if step % configs.config_values.checkpoint_freq == 0:
-            # TODO: maybe save also info about the sigmas
-            ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
-            ckpt.step.assign_add(step)
-            ckpt.save(save_dir+f"{start_time}_step_{step}")
-            print(f"\nSaved checkpoint. Average loss: {avg_loss/configs.config_values.checkpoint_freq:.3f}")
-            avg_loss = 0
-        if step == total_steps:
-            return
+            progress_bar.set_description(f'iteration {step}/{total_steps} | current loss {current_loss:.3f}')
+
+            avg_loss += current_loss
+            if step % configs.config_values.checkpoint_freq == 0:
+                # TODO: maybe save also info about the sigmas
+                ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
+                ckpt.step.assign_add(step)
+                ckpt.save(save_dir+f"{start_time}_step_{step}")
+                print(f"\nSaved checkpoint. Average loss: {avg_loss/configs.config_values.checkpoint_freq:.3f}")
+                avg_loss = 0
+            if step == total_steps:
+                return
     
     # NOTE bad way to choose the best model - saving all checkpoints and then testing after
 
