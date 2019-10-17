@@ -12,6 +12,15 @@ from losses.losses import loss_per_batch, loss_per_batch_alternative
 import configs
 from generate import plot_grayscale
 
+def print_model_summary(model):
+    batch = 2
+    if configs.config_values.dataset in ["cifar10", "celeb_a"]:
+        x = [tf.ones(shape=(batch, 32, 32, 1)), tf.ones(batch, dtype=tf.int32)]
+    else:
+        x = [tf.ones(shape=(batch, 28, 28, 1)), tf.ones(batch, dtype=tf.int32)]
+    out = model(x)
+    print(model.summary()+"\n\n")
+
 def train():   
     # load dataset from tfds (or use downloaded version if exists)
     train_data, test_data = get_train_test_data(configs.config_values.dataset)
@@ -35,7 +44,7 @@ def train():
 
     # initialize model
     model = RefineNet(filters=num_filters[configs.config_values.dataset], activation=tf.nn.elu)
-
+    print_model_summary(model)
     # declare optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # NOTE 10 times larger than in their paper
 

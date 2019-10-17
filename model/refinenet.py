@@ -30,6 +30,7 @@ class RefineNet(keras.Model):
 
     def build(self, input_shape):
         # Here we get the depth of the image that is passed to the model at the start, i.e. 1 for MNIST.
+        self.in_shape = input_shape
         self.decrease_channels = layers.Conv2D(input_shape[0][-1], kernel_size=3, strides=1, padding='same')
 
     def call(self, inputs, mask=None):
@@ -52,6 +53,9 @@ class RefineNet(keras.Model):
 
         return output
 
+    def summary(self):
+        x = [layers.Input(name="images", shape=self.in_shape[0][1:]), layers.Input(name="idx_sigmas",shape=(), dtype=tf.int32)]
+        return keras.Model(inputs=x, outputs=self.call(x)).summary()
 
 if __name__ == '__main__':
     import utils
@@ -61,10 +65,11 @@ if __name__ == '__main__':
     args = utils.get_command_line_args()
     configs.config_values = args
 
-    data_generators = tfds.load(name="cifar10", split="test", batch_size=-1)
+    data_generators = tfds.load(name="mnist", split="test", batch_size=-1)
     test = tf.cast(data_generators['image'], tf.float32)
 
     x = test[:3]
     idx_sigmas = tf.convert_to_tensor([3, 9, 3])
-    model = RefineNet(5, tf.nn.elu)
+    model = RefineNet(16, tf.nn.elu)
     output = model([x, idx_sigmas])
+    print(model.summary())
