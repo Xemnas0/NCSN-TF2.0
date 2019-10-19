@@ -6,7 +6,8 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 from datetime import datetime
 import os
-
+from PIL import Image
+import numpy as np
 def clamped(x):
     return tf.clip_by_value(x, 0, 1.0)
 
@@ -48,7 +49,9 @@ def sample(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
             # plot_grayscale(clamped(x[0, :, :, 0]))
 
             for j, sample in enumerate(x):
-                save_image(sample[:, :, 0], samples_directory + f'sample_{j}_{i+1}.png')
+                img = Image.fromarray((plt.get_cmap("gray")(sample[:, :, 0]) * 255).astype(np.uint8))
+                img.save(samples_directory + f'sample_{j}_{i+1}.png')
+                # save_image(sample[:, :, 0], samples_directory + f'sample_{j}_{i+1}.png')
         return x
 
 
@@ -65,7 +68,7 @@ if __name__ == '__main__':
 
     step = tf.Variable(0)
     model = RefineNet(filters=16, activation=tf.nn.elu)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.01)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
     latest_checkpoint = tf.train.latest_checkpoint(model_directory + dataset)
     print("loading model from checkpoint ", latest_checkpoint)
@@ -76,7 +79,7 @@ if __name__ == '__main__':
                                            tf.math.log(0.01),
                                            10))
 
-    samples = sample(model, sigma_levels, T=100, n_images=30)
+    samples = sample(model, sigma_levels, T=100, n_images=25)
 
     # for i, sample in enumerate(samples):
     #     # plot_grayscale(sample[:, :, 0])
