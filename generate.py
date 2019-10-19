@@ -8,6 +8,8 @@ from datetime import datetime
 import os
 from PIL import Image
 import numpy as np
+
+
 def clamped(x):
     return tf.clip_by_value(x, 0, 1.0)
 
@@ -21,6 +23,32 @@ def save_image(image, dir):
     plt.imshow(image, cmap=plt.get_cmap("gray"))
     plt.savefig(dir)
 
+def save_as_grid(images, filename, spacing=2):
+    """
+    Partially from https://stackoverflow.com/questions/42040747/more-idiomatic-way-to-display-images-in-a-grid-with-numpy
+    :param images:
+    :return:
+    """
+    # Define grid dimensions
+    n_images, height, width, channels = images.shape
+    rows = np.floor(np.sqrt(n_images)).astype(int)
+    cols = n_images // rows
+
+    # Init image
+    grid_cols = rows*height + (rows+1)*spacing
+    grid_rows = cols*width + (cols+1)*spacing
+    im = Image.new('L', (grid_rows, grid_cols))
+    for i in range(n_images):
+        row = i // rows
+        col = i % rows
+        row_start = row * height + (1+row) * spacing
+        col_start = col * width + (1+col) * spacing
+        im.paste(tf.keras.preprocessing.image.array_to_img(images[i]), (row_start, col_start))
+        # im.show()
+
+    im.save(filename, format="PNG")
+
+
 def sample(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
     """
     Only for MNIST, for now.
@@ -30,29 +58,28 @@ def sample(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
     :param T:
     :return:
     """
-    with tf.device('/GPU:0'):
-        image_size = (n_images, 28, 28, 1)
+    image_size = (n_images, 28, 28, 1)
 
-        x = tf.random.uniform(shape=image_size)
-        # plot_grayscale(x[0, :, :, 0])
+    x = tf.random.uniform(shape=image_size)
+    # plot_grayscale(x[0, :, :, 0])
 
-        for i, sigma_i in enumerate(sigmas):
-            print(f"sigma {i}/{len(sigmas)}")
-            alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
-            idx_sigmas = tf.ones(n_images, dtype=tf.int32) * i
-            for t in tqdm(range(T)):
-                z_t = tf.random.normal(shape=image_size, mean=0, stddev=1.0)  # TODO: check if stddev is correct
-                score = model([x, idx_sigmas])
-                noise = tf.sqrt(alpha_i * 2) * z_t
-                x = x + alpha_i * score + noise
+    for i, sigma_i in enumerate(sigmas):
+        print(f"sigma {i}/{len(sigmas)}")
+        alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
+        idx_sigmas = tf.ones(n_images, dtype=tf.int32) * i
+        for t in tqdm(range(T)):
+            z_t = tf.random.normal(shape=image_size, mean=0, stddev=1.0)  # TODO: check if stddev is correct
+            score = model([x, idx_sigmas])
+            noise = tf.sqrt(alpha_i * 2) * z_t
+            x = x + alpha_i * score + noise
 
-            # plot_grayscale(clamped(x[0, :, :, 0]))
-
-            for j, sample in enumerate(x):
-                img = Image.fromarray((plt.get_cmap("gray")(sample[:, :, 0]) * 255).astype(np.uint8))
-                img.save(samples_directory + f'sample_{j}_{i+1}.png')
-                # save_image(sample[:, :, 0], samples_directory + f'sample_{j}_{i+1}.png')
-        return x
+            if (t+1) % 10 == 0:
+                save_as_grid(x, samples_directory + f'sigma{i + 1}_t{t + 1}.png')
+                # for j, sample in enumerate(x):
+                #     img = Image.fromarray((plt.get_cmap("gray")(sample[:, :, 0]) * 255).astype(np.uint8))
+                #     img.save(samples_directory + f'sample_{j}_{i + 1}.png')
+                    # save_image(sample[:, :, 0], samples_directory + f'sample_{j}_{i+1}.png')
+    return x
 
 
 if __name__ == '__main__':
@@ -79,7 +106,7 @@ if __name__ == '__main__':
                                            tf.math.log(0.01),
                                            10))
 
-    samples = sample(model, sigma_levels, T=100, n_images=25)
+    samples = sample(model, sigma_levels, T=100, n_images=400)
 
     # for i, sample in enumerate(samples):
     #     # plot_grayscale(sample[:, :, 0])
