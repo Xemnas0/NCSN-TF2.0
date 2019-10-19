@@ -61,8 +61,8 @@ def train():
 
     # array of sigma levels
     # generate geometric sequence of values between sigma_low (0.01) and sigma_high (1.0)
-    sigma_levels = tf.math.exp(tf.linspace( tf.math.log(configs.config_values.sigma_low),
-                                            tf.math.log(configs.config_values.sigma_high),
+    sigma_levels = tf.math.exp(tf.linspace( tf.math.log(configs.config_values.sigma_high),
+                                            tf.math.log(configs.config_values.sigma_low),
                                             configs.config_values.num_L ))
 
     # training loop
@@ -74,7 +74,6 @@ def train():
     total_steps = configs.config_values.steps
     progress_bar = tqdm(train_data, total=total_steps, initial=step+1)
     progress_bar.set_description(f'iteration {step}/{total_steps} | current loss ?')
-
 
     with tf.device('/GPU:0'): # For some reason, this makes everything faster
         avg_loss = 0
