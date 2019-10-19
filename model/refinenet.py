@@ -19,10 +19,10 @@ class RefineNet(keras.Model):
         self.preact_4 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=4, padding=4)
         # Increasing the dilation even more would not help
 
-        self.refine_block_1 = RefineBlock(2, activation, filters)
-        self.refine_block_2 = RefineBlock(2, activation, filters * 2)
-        self.refine_block_3 = RefineBlock(2, activation, filters * 2)
-        self.refine_block_4 = RefineBlock(2, activation, filters * 2)
+        self.refine_block_1 = RefineBlock(activation, filters, n_blocks_crp=2, n_blocks_rcu=2)
+        self.refine_block_2 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_rcu=2)
+        self.refine_block_3 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_rcu=2)
+        self.refine_block_4 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_rcu=2)
 
         self.norm = ConditionalInstanceNormalizationPlusPlus2D()
         self.activation = activation

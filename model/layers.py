@@ -40,7 +40,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         self.pooling = pooling
         self.activation = activation
 
-        self.increase_channels_skip = layers.Conv2D(filters, kernel_size=1, padding='same')
+        self.increase_channels_skip = layers.Conv2D(filters, kernel_size=1, padding='valid')
 
         self.filters = filters
 
@@ -62,7 +62,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         x = self.conv2(x)
 
         if x.shape != skip_x.shape:
-            skip_x = self.increase_channels_skip(skip_x)
+            skip_x = self.increase_channels_skip(skip_x) # TODO: this should be performed before each pooling as well
 
         if self.pooling:
             # x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='VALID')
@@ -193,7 +193,7 @@ class MultiResolutionFusion(layers.Layer):
 
 
 class RefineBlock(layers.Layer):
-    def __init__(self, n_blocks_crp, activation, filters, kernel_size=3, pooling_size=5):
+    def __init__(self, activation, filters, n_blocks_crp=2, n_blocks_rcu=2, kernel_size=3, pooling_size=5):
         super(RefineBlock, self).__init__()
 
         self.activation = activation
@@ -201,8 +201,7 @@ class RefineBlock(layers.Layer):
         self.kernel_size = kernel_size
 
         # NOTE: they use 2 block, we use 1 for now
-        self.rcu_high = None
-        self.rcu_low = None
+        self.n_blocks_rcu = n_blocks_rcu
 
         self.mrf = MultiResolutionFusion(filters, kernel_size)
 
@@ -211,23 +210,31 @@ class RefineBlock(layers.Layer):
         self.rcu_end = RCUBlock(activation, filters, kernel_size)
 
     def build(self, input_shape):
-        self.rcu_high = RCUBlock(self.activation, self.filters, self.kernel_size)
-        if len(input_shape) == 2:
-            self.rcu_low = RCUBlock(self.activation, self.filters, self.kernel_size)
+        for n in range(self.n_blocks_rcu):
+            setattr(self, f'rcu_high{n}', RCUBlock(self.activation, self.filters, self.kernel_size))
+            if len(input_shape) == 2:
+                setattr(self, f'rcu_low{n}', RCUBlock(self.activation, self.filters, self.kernel_size))
 
     def call(self, inputs, **kwargs):
         idx_sigmas = inputs[1]
         if len(inputs[0]) == 1:
             high_input = inputs[0][0]
 
-            high_input = self.rcu_high([high_input, idx_sigmas])
+            for n in range(self.n_blocks_rcu):
+                rcu_high = getattr(self, f'rcu_high{n}')
+                high_input = rcu_high([high_input, idx_sigmas])
+
             x = self.mrf([[high_input], idx_sigmas])
 
         elif len(inputs[0]) == 2:
             high_input, low_input = inputs[0]
 
-            high_input = self.rcu_high([high_input, idx_sigmas])
-            low_input = self.rcu_low([low_input, idx_sigmas])
+            for n in range(self.n_blocks_rcu):
+                rcu_high = getattr(self, f'rcu_high{n}')
+                rcu_low = getattr(self, f'rcu_low{n}')
+                high_input = rcu_high([high_input, idx_sigmas])
+                low_input = rcu_low([low_input, idx_sigmas])
+
             x = self.mrf([[high_input, low_input], idx_sigmas])
 
         x = self.crp([x, idx_sigmas])
