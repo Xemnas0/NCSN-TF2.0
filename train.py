@@ -19,7 +19,20 @@ def print_model_summary(model):
     else:
         x = [tf.ones(shape=(batch, 28, 28, 1)), tf.ones(batch, dtype=tf.int32)]
     out = model(x)
-    print(model.summary()+"\n\n")
+    print(model.summary())
+
+def manage_gpu_memory_usage():
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        except RuntimeError as e:
+            # Memory growth must be set before GPUs have been initialized
+            print(e)
 
 def train():   
     # load dataset from tfds (or use downloaded version if exists)
@@ -116,4 +129,5 @@ if __name__ == "__main__":
     args = utils.get_command_line_args()
     configs.config_values = args
 
+    manage_gpu_memory_usage()
     train()
