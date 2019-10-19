@@ -20,7 +20,6 @@ def save_image(image, dir):
     plt.imshow(image, cmap=plt.get_cmap("gray"))
     plt.savefig(dir)
 
-
 def sample(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
     """
     Only for MNIST, for now.
@@ -30,23 +29,27 @@ def sample(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
     :param T:
     :return:
     """
-    image_size = (n_images, 28, 28, 1)
+    with tf.device('/GPU:0'):
+        image_size = (n_images, 28, 28, 1)
 
-    x = tf.random.uniform(shape=image_size)
-    # plot_grayscale(x[0, :, :, 0])
+        x = tf.random.uniform(shape=image_size)
+        # plot_grayscale(x[0, :, :, 0])
 
-    for i, sigma_i in enumerate(sigmas):
-        print(f"sigma {i}/{len(sigmas)}")
-        alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
+        for i, sigma_i in enumerate(sigmas):
+            print(f"sigma {i}/{len(sigmas)}")
+            alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
+            idx_sigmas = tf.ones(n_images, dtype=tf.int32) * i
+            for t in tqdm(range(T)):
+                z_t = tf.random.normal(shape=image_size, mean=0, stddev=1.0)  # TODO: check if stddev is correct
+                score = model([x, idx_sigmas])
+                noise = tf.sqrt(alpha_i * 2) * z_t
+                x = x + alpha_i * score + noise
 
-        for t in tqdm(range(T)):
-            z_t = tf.random.normal(shape=image_size, mean=0, stddev=1.0)  # TODO: check if stddev is correct
-            score = model([x, tf.ones(n_images, dtype=tf.int32) * i])
-            x = x + alpha_i * score + tf.sqrt(alpha_i * 2) * z_t
+            # plot_grayscale(clamped(x[0, :, :, 0]))
 
-        # plot_grayscale(clamped(x[0, :, :, 0]))
-
-    return x
+            for j, sample in enumerate(x):
+                save_image(sample[:, :, 0], samples_directory + f'sample_{j}_{i+1}.png')
+        return x
 
 
 if __name__ == '__main__':
@@ -73,8 +76,8 @@ if __name__ == '__main__':
                                            tf.math.log(0.01),
                                            10))
 
-    samples = sample(model, sigma_levels, T=100, n_images=50)
+    samples = sample(model, sigma_levels, T=100, n_images=30)
 
-    for i, sample in enumerate(samples):
-        # plot_grayscale(sample[:, :, 0])
-        save_image(sample[:, :, 0], samples_directory + f'sample_{i}.png')
+    # for i, sample in enumerate(samples):
+    #     # plot_grayscale(sample[:, :, 0])
+    #     save_image(sample[:, :, 0], samples_directory + f'sample_{i}.png')
