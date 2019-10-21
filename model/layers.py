@@ -2,9 +2,9 @@ import tensorflow as tf
 import tensorflow.keras.layers as layers  # TODO: check if we should use keras or tf.keras
 import configs
 
-
+@tf.function
 def custom_pooling(x):
-    x = sum([x[:, ::2, ::2, :], x[:, 1::2, ::2, :], x[:, ::2, 1::2, :], x[:, 1::2, 1::2, :]]) / 4.0
+    x = tf.reduce_sum([x[:, ::2, ::2, :], x[:, 1::2, ::2, :], x[:, ::2, 1::2, :], x[:, 1::2, 1::2, :]], axis=0) / 4.0
     return x
 
 
