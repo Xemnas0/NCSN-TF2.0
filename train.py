@@ -14,18 +14,6 @@ from losses.losses import loss_per_batch, loss_per_batch_alternative
 import configs
 from generate import plot_grayscale
 
-device = utils.get_tensorflow_device()
-
-
-def print_model_summary(model):
-    batch = 2
-    if configs.config_values.dataset in ["cifar10", "celeb_a"]:
-        x = [tf.ones(shape=(batch, 32, 32, 1)), tf.ones(batch, dtype=tf.int32)]
-    else:
-        x = [tf.ones(shape=(batch, 28, 28, 1)), tf.ones(batch, dtype=tf.int32)]
-    out = model(x)
-    print(model.summary())
-
 def manage_gpu_memory_usage():
     gpus = tf.config.experimental.list_physical_devices('GPU')
     if gpus:
@@ -38,6 +26,22 @@ def manage_gpu_memory_usage():
         except RuntimeError as e:
             # Memory growth must be set before GPUs have been initialized
             print(e)
+
+
+manage_gpu_memory_usage()
+
+device = utils.get_tensorflow_device()
+
+
+def print_model_summary(model):
+    batch = 2
+    if configs.config_values.dataset in ["cifar10", "celeb_a"]:
+        x = [tf.ones(shape=(batch, 32, 32, 1)), tf.ones(batch, dtype=tf.int32)]
+    else:
+        x = [tf.ones(shape=(batch, 28, 28, 1)), tf.ones(batch, dtype=tf.int32)]
+    out = model(x)
+    print(model.summary())
+
 
 @tf.function
 def train_one_step(model, optimizer, data_batch_perturbed, data_batch, idx_sigmas, sigmas):
@@ -139,11 +143,11 @@ def train():
     # NOTE bad way to choose the best model - saving all checkpoints and then testing after
 
 if __name__ == "__main__":
+
     tf.get_logger().setLevel('ERROR')
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
     args = utils.get_command_line_args()
     configs.config_values = args
 
-    manage_gpu_memory_usage()
     train()
