@@ -4,6 +4,7 @@ import numpy as np
 import utils, os
 from tqdm import tqdm
 from datetime import datetime
+from model.inception import OurInception
 
 # our files
 from datasets.dataset_loader import get_train_test_data
@@ -58,9 +59,11 @@ def train():
     log_dir = configs.config_values.log_dir + configs.config_values.dataset + "/"
     summary_writer = tf.summary.create_file_writer(log_dir+start_time)
 
-    # initialize model
+    # initialize models
     model = RefineNet(filters=num_filters[configs.config_values.dataset], activation=tf.nn.elu)
     print_model_summary(model)
+    inception = OurInception(image_side=199) #TODO: set this to 299
+    
     # declare optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # NOTE 10 times larger than in their paper
 
@@ -122,7 +125,11 @@ def train():
                 avg_loss = 0
             if step == total_steps:
                 return
-    
+
+            # Compute inception score mean and standard deviation
+            # images = model.sample(sigma_levels, n_images=1000, T=100)
+            # is_mean, is_stddev = inception.inception_score(images)
+
     # NOTE bad way to choose the best model - saving all checkpoints and then testing after
 
 if __name__ == "__main__":
