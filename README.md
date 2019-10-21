@@ -31,7 +31,7 @@ TODO list:
     12. Ablation for the architecture: no dilation, number of RCU, number of filters
     14. Difference in the equations (epsilon and norm)
     15. Different initialization for norm or conv
-
+    16. Different noise levels (not geometric)
 1. INNOVATION
     11. Denoising
     13. Investigate about Langevin dynamics and maybe modify sampling
