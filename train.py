@@ -12,6 +12,9 @@ from losses.losses import loss_per_batch, loss_per_batch_alternative
 import configs
 from generate import plot_grayscale
 
+device = utils.get_tensorflow_device()
+
+
 def print_model_summary(model):
     batch = 2
     if configs.config_values.dataset in ["cifar10", "celeb_a"]:
@@ -88,7 +91,7 @@ def train():
     progress_bar = tqdm(train_data, total=total_steps, initial=step+1)
     progress_bar.set_description(f'iteration {step}/{total_steps} | current loss ?')
 
-    with tf.device('/GPU:0'): # For some reason, this makes everything faster
+    with tf.device(device): # For some reason, this makes everything faster
         avg_loss = 0
         for data_batch in progress_bar:
             step += 1
