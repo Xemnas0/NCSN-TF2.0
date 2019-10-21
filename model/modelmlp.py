@@ -3,7 +3,6 @@ import tensorflow.keras as keras
 import tensorflow.keras.layers as layers
 
 
-
 class ModelMLP(keras.Model):
 
     def __init__(self, activation):
