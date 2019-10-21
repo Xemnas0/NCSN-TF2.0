@@ -5,6 +5,7 @@ import utils, os
 from tqdm import tqdm
 from datetime import datetime
 from model.inception import OurInception
+import cProfile
 
 # our files
 from datasets.dataset_loader import get_train_test_data
@@ -37,6 +38,15 @@ def manage_gpu_memory_usage():
         except RuntimeError as e:
             # Memory growth must be set before GPUs have been initialized
             print(e)
+
+@tf.function
+def train_one_step(model, optimizer, data_batch_perturbed, data_batch, idx_sigmas, sigmas):
+    with tf.GradientTape() as t:
+        scores = model([data_batch_perturbed, idx_sigmas])
+        current_loss = loss_per_batch_alternative(scores, data_batch_perturbed, data_batch, sigmas)
+        gradients = t.gradient(current_loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    return current_loss
 
 def train():   
     # load dataset from tfds (or use downloaded version if exists)
@@ -105,11 +115,7 @@ def train():
             sigmas = tf.reshape(sigmas, shape=(data_batch.shape[0], 1, 1, 1))
             data_batch_perturbed = data_batch + tf.random.normal(shape=data_batch.shape) * sigmas
 
-            with tf.GradientTape() as t:
-                scores = model([data_batch_perturbed, idx_sigmas])
-                current_loss = loss_per_batch_alternative(scores, data_batch_perturbed, data_batch, sigmas)
-                gradients = t.gradient(current_loss, model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+            current_loss = train_one_step(model, optimizer, data_batch_perturbed, data_batch, idx_sigmas, sigmas)
 
             tf.summary.scalar('loss', float(current_loss), step=int(step))
 
