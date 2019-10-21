@@ -1,5 +1,5 @@
 import argparse
-
+import tensorflow as tf
 def get_command_line_args():
     parser = argparse.ArgumentParser(description='I AM A HELP MESSAGE')
     parser.add_argument('--dataset', default='mnist',
@@ -25,3 +25,8 @@ def get_command_line_args():
 
 
     return parser.parse_args()
+
+def get_tensorflow_device():
+    device = 'gpu:0' if tf.test.is_gpu_available() else 'cpu'
+    print(f"Using device {device}")
+    return device
