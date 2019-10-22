@@ -9,16 +9,18 @@ Created for the [Reproducibility Challenge @ NeurIPS 2019].
 
 
 TODO list:
-1. Think about other evaluation metrics
+1. [x] Think about other evaluation metrics
 2. [x] Compute inception score
-9. CelebA and Cifar-10
+4. Speed up inception score computation
+3. Modify the name of the saved model according to number of filters and maybe other info
+9. [x] CelebA and Cifar-10
 5. Evaluate FID score with 1000 images per checkpoint for selecting final best model in CelebA and Cifar-10
 3. Properly save the loss while training
 6. Baseline
 4. [?] Evaluate test loss on the whole test set while training
 
 1. INPAINTING
-    8. Inpainting, plotting images
+    8. [x] Inpainting, plotting images
     9. Try different occlusion shapes
 
 1. TOY EXAMPLES
