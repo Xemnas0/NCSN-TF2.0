@@ -38,7 +38,8 @@ def save_as_grid(images, filename, spacing=2):
     # Init image
     grid_cols = rows * height + (rows + 1) * spacing
     grid_rows = cols * width + (cols + 1) * spacing
-    im = Image.new('L', (grid_rows, grid_cols))
+    mode = 'L' if channels == 1 else "RGB"
+    im = Image.new(mode, (grid_rows, grid_cols))
     for i in range(n_images):
         row = i // rows
         col = i % rows
@@ -51,14 +52,52 @@ def save_as_grid(images, filename, spacing=2):
 
 
 @tf.function
-def sample_one_step(model, x, idx_sigmas, image_size, alpha_i):
-    z_t = tf.random.normal(shape=image_size, mean=0, stddev=1.0)  # TODO: check if stddev is correct
+def sample_one_step(model, x, idx_sigmas, alpha_i):
+    z_t = tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)  # TODO: check if stddev is correct
     score = model([x, idx_sigmas])
     noise = tf.sqrt(alpha_i * 2) * z_t
     return x + alpha_i * score + noise
 
 
-def sample(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
+def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
+    """
+    Used for sampling big amount of images (e.g. 50000)
+    :param model: model for sampling (RefineNet)
+    :param sigmas: sigma levels of noise
+    :param eps:
+    :param T: iteration per sigma level
+    :return: Tensor of dimensions (n_images, width, height, channels)
+    """
+    # Tuple for (n_images, width, height, channels)
+    image_size = (n_images) + model.in_shape[0][1:]
+    batch_size = min(batch_size, n_images)
+
+    with tf.device('CPU'):
+        x = tf.random.uniform(shape=image_size)
+    x = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
+    x_processed = None
+
+    n_processed_images = 0
+    for i_batch, batch in enumerate(x):
+        print(f'\n{n_processed_images}/{n_images} images processed\n')
+        for i, sigma_i in enumerate(tqdm(sigmas)):
+            alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
+            idx_sigmas = tf.ones(batch.get_shape()[0], dtype=tf.int32) * i
+            for t in range(T):
+                sample_one_step(model, batch, idx_sigmas, alpha_i)
+
+        with tf.device('CPU'):
+            if x_processed is not None:
+                x_processed = tf.concat([x_processed, batch], axis=0)
+            else:
+                x_processed = batch
+
+        n_processed_images += batch_size
+
+    return x_processed
+
+
+def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
     """
     Only for MNIST, for now.
     :param model:
@@ -67,7 +106,7 @@ def sample(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
     :param T:
     :return:
     """
-    image_size = (n_images, 28, 28, 1)
+    image_size = (n_images, 32, 32, 3)
 
     x = tf.random.uniform(shape=image_size)
     # plot_grayscale(x[0, :, :, 0])
@@ -81,10 +120,10 @@ def sample(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
 
             if (t + 1) % 10 == 0:
                 save_as_grid(x, samples_directory + f'sigma{i + 1}_t{t + 1}.png')
-                # for j, sample in enumerate(x):
-                #     img = Image.fromarray((plt.get_cmap("gray")(sample[:, :, 0]) * 255).astype(np.uint8))
+                # for j, sample_and_save in enumerate(x):
+                #     img = Image.fromarray((plt.get_cmap("gray")(sample_and_save[:, :, 0]) * 255).astype(np.uint8))
                 #     img.save(samples_directory + f'sample_{j}_{i + 1}.png')
-                # save_image(sample[:, :, 0], samples_directory + f'sample_{j}_{i+1}.png')
+                # save_image(sample_and_save[:, :, 0], samples_directory + f'sample_{j}_{i+1}.png')
     return x
 
 
@@ -93,16 +132,14 @@ if __name__ == '__main__':
     configs.config_values = args
 
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
-
+    dataset_name = 'cifar10'
     model_directory = './saved_models/'
-    dataset = 'mnist/'
-    samples_directory = './samples/' + start_time + "/"
-    os.makedirs(samples_directory)
+    dataset = 'cifar10/'
+    filters = 64
 
     step = tf.Variable(0)
-    model = RefineNet(filters=16, activation=tf.nn.elu)
+    model = RefineNet(filters=64, activation=tf.nn.elu)
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-
     latest_checkpoint = tf.train.latest_checkpoint(model_directory + dataset)
     print("loading model from checkpoint ", latest_checkpoint)
     ckpt = tf.train.Checkpoint(step=step, optimizer=optimizer, model=model)
@@ -112,8 +149,11 @@ if __name__ == '__main__':
                                            tf.math.log(0.01),
                                            10))
 
-    samples = sample(model, sigma_levels, T=100, n_images=400)
+    samples_directory = './samples/' + f'{start_time}_{dataset_name}_{step.numpy()}steps_{filters}filters' + "/"  # TODO: add number of steps in name
+    os.makedirs(samples_directory)
 
-    # for i, sample in enumerate(samples):
-    #     # plot_grayscale(sample[:, :, 0])
-    #     save_image(sample[:, :, 0], samples_directory + f'sample_{i}.png')
+    samples = sample_and_save(model, sigma_levels, T=100, n_images=400)
+
+    # for i, sample_and_save in enumerate(samples):
+    #     # plot_grayscale(sample_and_save[:, :, 0])
+    #     save_image(sample_and_save[:, :, 0], samples_directory + f'sample_{i}.png')
