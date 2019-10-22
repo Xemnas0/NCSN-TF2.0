@@ -9,7 +9,7 @@ import os
 from PIL import Image
 import numpy as np
 from datasets.dataset_loader import get_train_test_data
-
+from generate import save_as_grid, sample_one_step
 def clamped(x):
     return tf.clip_by_value(x, 0, 1.0)
 
@@ -52,7 +52,7 @@ def inpaint_one_step(model, x_t, idx_sigmas, alpha_i):
     return x_t + (alpha_i/2) * score + noise
 
 
-def inpaint_x(model, sigmas, m, x, eps=1e-8, T=100):
+def inpaint_x(model, sigmas, m, x, eps=2 * 1e-5, T=100):
     # almost the same loop as generation except with mask
     # TODO: merge this with generate? 
     x_t = tf.random.uniform(shape=x.shape)
@@ -64,14 +64,16 @@ def inpaint_x(model, sigmas, m, x, eps=1e-8, T=100):
         y = x + z
         idx_sigmas = tf.ones(1, dtype=tf.int32) * i
         for t in range(T):
-            x_t = clamped(inpaint_one_step(model, x_t, idx_sigmas, alpha_i))
+            x_t = inpaint_one_step(model, x_t, idx_sigmas, alpha_i)
             x_t = (x_t * (1 - m)) + (y * m)
-    #        # if (t + 1) % 10 == 0:
-    #             # save_as_grid(x_t, samples_directory + f'sigma{i + 1}_t{t + 1}.png')
+            if (t + 1) % 10 == 0:
+                save_as_grid(x_t, samples_directory + f'sigma{i + 1}_t{t + 1}.png')
     return x_t
 
 
 if __name__ == '__main__':
+    tf.get_logger().setLevel('ERROR')
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     args = utils.get_command_line_args()
     configs.config_values = args
 
