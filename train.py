@@ -4,7 +4,7 @@ import numpy as np
 import utils, os
 from tqdm import tqdm
 from datetime import datetime
-from model.inception import compute_inception_score
+from model.inception import Metrics
 import cProfile
 
 # our files
@@ -60,10 +60,9 @@ def train():
 
     # split data into batches
     train_data = train_data.shuffle(1000).batch(configs.config_values.batch_size).repeat().prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
-    test_data = test_data.batch(configs.config_values.batch_size)
 
     num_batches = int(tf.data.experimental.cardinality(train_data))
-    num_filters = {'mnist': 64, 'cifar10': 64, 'celeb_a': 128} # NOTE change mnist back to 64
+    num_filters = {'mnist': 16, 'cifar10': 64, 'celeb_a': 128} # NOTE change mnist back to 64
 
     # path for saving the model(s)
     save_dir = configs.config_values.checkpoint_dir + configs.config_values.dataset + '/'
@@ -77,7 +76,7 @@ def train():
     # initialize models
     model = RefineNet(filters=num_filters[configs.config_values.dataset], activation=tf.nn.elu)
     print_model_summary(model)
-
+    metrics = Metrics()
     # declare optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001) # NOTE 10 times larger than in their paper
 
@@ -97,6 +96,14 @@ def train():
     sigma_levels = tf.math.exp(tf.linspace( tf.math.log(configs.config_values.sigma_high),
                                             tf.math.log(configs.config_values.sigma_low),
                                             configs.config_values.num_L ))
+
+    # Compute inception score mean and standard deviation
+    sampled_images = sample_many(model, sigma_levels, n_images=10)
+    is_mean, is_stddev = metrics.compute_inception_score(sampled_images, image_side_inception=199)
+    print(f'Inception Score: {is_mean:.3} +- {is_stddev:.3}')
+    # Compute fid
+    fid = metrics.compute_fid(images_1=sampled_images, data_2=test_data, image_side_inception=199)
+    print(f'FID Score: {fid:.3}')
 
     # training loop
     print(f'dataset: {configs.config_values.dataset}, '
@@ -136,13 +143,8 @@ def train():
             if step == total_steps:
                 return
 
-            # Compute inception score mean and standard deviation
-            images = sample_many(model, sigma_levels, n_images=1000)
-            compute_inception_score(images, image_side_inception=199)
-            # images = model.sample_and_save(sigma_levels, n_images=1000, T=100)
-            # is_mean, is_stddev = inception.inception_score(images)
 
-    # NOTE bad way to choose the best model - saving all checkpoints and then testing after
+
 
 if __name__ == "__main__":
 
