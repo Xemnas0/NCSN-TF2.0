@@ -8,7 +8,7 @@ from datetime import datetime
 import os
 from PIL import Image
 import numpy as np
-from datasets.dataset_loader import get_random_n
+from datasets.dataset_loader import get_train_test_data
 
 def clamped(x):
     return tf.clip_by_value(x, 0, 1.0)
@@ -79,7 +79,7 @@ if __name__ == '__main__':
 
     model_directory = './saved_models/'
     dataset = 'mnist/'
-    samples_directory = './inpainting_results/'# + start_time + "/"
+    samples_directory = './inpainting_results/' + start_time + "/"
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 
@@ -96,7 +96,7 @@ if __name__ == '__main__':
                                            tf.math.log(0.01),
                                            10))
 
-    test_dataset = get_random_n('mnist', 1).batch(1)
+    test_dataset = get_train_test_data('mnist')[1].batch(1) #TODO make this better!
     n = 1
     N = 1
     for i, x in enumerate(test_dataset):
