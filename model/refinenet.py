@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 import tensorflow.keras.layers as layers
+from tqdm import tqdm
 
 from model.layers import RefineBlock, ConditionalFullPreActivationBlock, DilatedConv2D, \
     ConditionalInstanceNormalizationPlusPlus2D
@@ -10,6 +11,7 @@ class RefineNet(keras.Model):
 
     def __init__(self, filters, activation):
         super(RefineNet, self).__init__()
+        self.in_shape = None
 
         self.increase_channels = layers.Conv2D(filters, kernel_size=3, padding='same')
 
@@ -54,8 +56,50 @@ class RefineNet(keras.Model):
         return output
 
     def summary(self):
-        x = [layers.Input(name="images", shape=self.in_shape[0][1:]), layers.Input(name="idx_sigmas",shape=(), dtype=tf.int32)]
+        x = [layers.Input(name="images", shape=self.in_shape[0][1:]),
+             layers.Input(name="idx_sigmas", shape=(), dtype=tf.int32)]
         return keras.Model(inputs=x, outputs=self.call(x)).summary()
+
+    def sample(self, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
+        """
+        Samples images
+        :param sigmas: sigma levels of noise
+        :param eps:
+        :param T: iteration per sigma level
+        :return: Tensor of dimensions (n_images, width, height, channels)
+        """
+        # Tuple for (n_images, width, height, channels)
+        image_size = (n_images) + self.in_shape[0][1:]
+        batch_size = min(batch_size, n_images)
+
+
+        with tf.device('CPU'):
+            x = tf.random.uniform(shape=image_size)
+        x = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
+        x_processed = None
+
+        n_processed_images = 0
+        for i_batch, batch in enumerate(x):
+            print(f'{n_processed_images}/{n_images} images processed')
+            for i, sigma_i in enumerate(tqdm(sigmas)):
+                alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
+                idx_sigmas = tf.ones(batch.get_shape()[0], dtype=tf.int32) * i
+                for t in range(T):
+                    z_t = tf.random.normal(shape=batch.get_shape(), mean=0, stddev=1.0)  # TODO: check if stddev is correct
+                    score = self.call([batch, idx_sigmas])
+                    noise = tf.sqrt(alpha_i * 2) * z_t
+                    batch = batch + alpha_i * score + noise
+
+            with tf.device('CPU'):
+                if x_processed is not None:
+                    x_processed = tf.concat([x_processed, batch], axis=0)
+                else:
+                    x_processed = batch
+
+            n_processed_images += batch_size
+
+        return x_processed
+
 
 if __name__ == '__main__':
     import utils
