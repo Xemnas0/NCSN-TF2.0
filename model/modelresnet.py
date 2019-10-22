@@ -63,7 +63,7 @@ class ResidualBlock(layers.Layer):
         self.is_encoder = is_encoder
         self.resize = resize
         self.strides = strides = 2 if resize else 1
-        padding = 'same' #if strides == 1 else 'valid'
+        padding = 'same'  # if strides == 1 else 'valid'
 
         if is_encoder:
             self.conv1 = layers.Conv2D(filters, kernel_size, strides=strides, padding=padding)
@@ -80,31 +80,12 @@ class ResidualBlock(layers.Layer):
 
     def call(self, inputs, **kwargs):
         # TODO: CHECK IF INPUTS NEED TO BE SPLIT ?
-        print(self.name)
         x = self.norm1(inputs)
         x = self.activation(x)
         x = self.conv1(x)
         x = self.norm2(x)
         x = self.activation(x)
         x = self.conv2(x)
-
-        # FIXME: THEY DO IT WITH STRIDE = 2. ALSO, THEY RESIZE x IN THE FIRS CONVOLUTION.
-        # if self.resize:
-        #     if self.is_encoder:
-        #         a = x.shape[1:-1].as_list()[0] * 2
-                # b = x.shape[1:-1].as_list()[1] * 2
-                # new_dims = tf.TensorShape([a, b])
-                # skip_x = self.increase_channels_skip(inputs)
-            # else:
-                # a = x.shape[1:-1].as_list()[0] / 2
-                # b = x.shape[1:-1].as_list()[1] / 2
-                # new_dims = tf.TensorShape([a, b])
-                # skip_x = self.decrease_channels_skip(inputs)
-            # x = tf.image.resize(x, new_dims)
-            # skip_x = tf.image.resize(inputs, new_dims)  # TODO: CHECK IF OK?
-
-        # else:
-        #     skip_x = inputs
 
         if x.shape != inputs.shape:
             if self.is_encoder:
@@ -113,6 +94,5 @@ class ResidualBlock(layers.Layer):
                 skip_x = self.decrease_skip_size(inputs)
         else:
             skip_x = inputs
-        print(skip_x.shape)
-        print(x.shape)
+
         return skip_x + x
