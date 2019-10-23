@@ -15,51 +15,53 @@ def clamped(x):
     return tf.clip_by_value(x, 0, 1.0)
 
 
-# def save_as_grid(images, filename, spacing=2):
-#     """
-#     Partially from https://stackoverflow.com/questions/42040747/more-idiomatic-way-to-display-images-in-a-grid-with-numpy
-#     """
-#     # images is of shape [ [occluded_x, [sample, sample, sample...], x],
-#     #                      [occluded_x, [sample, sample, sample...], x],
-#     #                      ...]
-#     _, height, width, channels = images[0][0].shape
-#     rows = len(images)
-#     cols = len(images[0][1]) + 2
-#
-#     # init image
-#     grid_cols = rows * height# + (rows + 1) * spacing
-#     grid_rows = cols * width# + (cols + 1) * spacing
-#     mode = 'L' if channels == 1 else "RGB"
-#     im = Image.new(mode, (grid_rows, grid_cols))
-#
-#     for i in range(rows):  # i = row, j = column
-#         occluded_x, samples, x = images[i]
-#
-#         # plot the occluded image
-#         row_start = 0#i * height# + (1 + i) * spacing
-#         col_start = 0#spacing
-#         # im.paste(tf.keras.preprocessing.image.array_to_img(occluded_x[0,:,:,:]), (row_start, col_start))
-#         # im.save(filename+"_0", format="PNG")
-#
-#         # plot the samples
-#         for j in range(len(samples)):
-#             col_start = (j+1) * width# + (1 + j+1) * spacing
-#             im.paste(tf.keras.preprocessing.image.array_to_img(samples[j][0,:,:,:]), (row_start, col_start))
-#             im.save(filename+f"_{j+1}", format="PNG")
-#
-#         # plot the original image
-#         col_start = len(samples) * width# + (1 + len(samples)+1) * spacing
-#         im.paste(tf.keras.preprocessing.image.array_to_img(x[0,:,:,:]), (row_start, col_start))
-#         im.save(filename+"_n", format="PNG")
-#
-#     im.save(filename, format="PNG")
+def save_as_grid(images, filename, spacing=2):
+    """
+    Partially from https://stackoverflow.com/questions/42040747/more-idiomatic-way-to-display-images-in-a-grid-with-numpy
+    """
+    # images is of shape [ [occluded_x, [sample, sample, sample...], x],
+    #                      [occluded_x, [sample, sample, sample...], x],
+    #                      ...]
+    _, height, width, channels = images[0][0].shape
+    rows = len(images)
+    cols = len(images[0][1]) + 2
+
+    # init image
+    image_height = rows * height + (rows + 1) * spacing
+    image_width = cols * width + (cols + 1) * spacing + 2 * spacing  # double spacing between samples and x/occluded_x
+    mode = 'L' if channels == 1 else "RGB"
+    im = Image.new(mode, (image_width, image_height), color='white')
+
+    for i in range(rows):  # i = row, j = column
+        occluded_x, samples, x = images[i]
+
+        # plot the occluded image
+        row_start = i * height + (1 + i) * spacing
+        col_start = spacing
+
+        im.paste(tf.keras.preprocessing.image.array_to_img(occluded_x[0,:,:,:]), (col_start, row_start))
+
+        # plot the samples
+        for j in range(len(samples)):
+            col_start = (j+1) * width + (j+2) * spacing + spacing
+            im.paste(tf.keras.preprocessing.image.array_to_img(samples[j][0,:,:,:]), (col_start, row_start))
+
+        # plot the original image
+        col_start = (len(samples)+1) * width + (len(samples)+2) * spacing + 2 * spacing
+        im.paste(tf.keras.preprocessing.image.array_to_img(x[0,:,:,:]), (col_start, row_start))
+        # im.save(filename+"_n", format="PNG")
+
+    im.save(filename, format="PNG")
 
 
 def save_image(image, filename):
+    rgb = False if image.shape[-1] == 1 else True
     if len(image.shape) == 4:
         image = image[0,:,:,0]
-
-    plt.imshow(image, cmap=plt.get_cmap("gray"))
+    if not rgb:
+        plt.imshow(image, cmap="gray")
+    else:
+        plt.imshow(image)
     plt.savefig(filename)
 
 
@@ -122,8 +124,8 @@ if __name__ == '__main__':
                                            configs.config_values.num_L))
 
     # TODO add these values to args
-    N = 1  # number of images to occlude
-    n = 2  # number of samples to generate for each occluded image
+    N = 2  # number of images to occlude
+    n = 5  # number of samples to generate for each occluded image
     mask_style = 'vertical_split'  # what kind of occlusion to use
 
     # load data for inpainting (currently always N first data points from test data)
@@ -152,4 +154,4 @@ if __name__ == '__main__':
 
         images.append([occluded_x, samples, x])
 
-    # save_as_grid(images, samples_directory + '/grid.png')
+    save_as_grid(images, samples_directory + '/grid.png')
