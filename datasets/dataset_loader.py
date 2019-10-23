@@ -25,8 +25,8 @@ def preprocess(dataset_name, data, train=True):
 
 def get_train_test_data(dataset_name):
     train, test = load_data(dataset_name)
-    train = preprocess(dataset_name, train=True)
-    test = preprocess(dataset_name, train=False)
+    train = preprocess(dataset_name, train, train=True)
+    test = preprocess(dataset_name, test, train=False)
 
     return train, test
 
