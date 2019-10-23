@@ -69,7 +69,7 @@ def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
     :return: Tensor of dimensions (n_images, width, height, channels)
     """
     # Tuple for (n_images, width, height, channels)
-    image_size = (n_images) + model.in_shape[0][1:]
+    image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
     batch_size = min(batch_size, n_images)
 
     with tf.device('CPU'):
@@ -78,13 +78,13 @@ def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
     x_processed = None
 
     n_processed_images = 0
-    for i_batch, batch in enumerate(x):
-        print(f'\n{n_processed_images}/{n_images} images processed\n')
-        for i, sigma_i in enumerate(tqdm(sigmas)):
+    for i_batch, batch in enumerate(
+            tqdm(x, total=tf.data.experimental.cardinality(x).numpy(), desc='Generating samples')):
+        for i, sigma_i in enumerate(sigmas):
             alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
             idx_sigmas = tf.ones(batch.get_shape()[0], dtype=tf.int32) * i
             for t in range(T):
-                sample_one_step(model, batch, idx_sigmas, alpha_i)
+                batch = sample_one_step(model, batch, idx_sigmas, alpha_i)
 
         with tf.device('CPU'):
             if x_processed is not None:
@@ -97,33 +97,72 @@ def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
     return x_processed
 
 
+@tf.function
+def _preprocess_image_to_save(x):
+    x = x * 255
+    x = x + 0.5
+    x = tf.clip_by_value(x, 0, 255)
+    return x
+
+
+def sample_many_and_save(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1, save_directory=None):
+    """
+    Used for sampling big amount of images (e.g. 50000)
+    :param model: model for sampling (RefineNet)
+    :param sigmas: sigma levels of noise
+    :param eps:
+    :param T: iteration per sigma level
+    :return: Tensor of dimensions (n_images, width, height, channels)
+    """
+    os.makedirs(save_directory)
+    # Tuple for (n_images, width, height, channels)
+    image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
+    batch_size = min(batch_size, n_images)
+
+    with tf.device('CPU'):
+        x = tf.random.uniform(shape=image_size)
+    x = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
+    x_processed = None
+
+    idx_image = 0
+    for i_batch, batch in enumerate(
+            tqdm(x, total=tf.data.experimental.cardinality(x).numpy(), desc='Generating samples')):
+        for i, sigma_i in enumerate(sigmas):
+            alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
+            idx_sigmas = tf.ones(batch.get_shape()[0], dtype=tf.int32) * i
+            for t in range(T):
+                batch = sample_one_step(model, batch, idx_sigmas, alpha_i)
+
+        if save_directory is not None:
+            batch = _preprocess_image_to_save(batch)
+            for image in batch:
+                im = Image.new('RGB', image_size[1:3])
+                im.paste(tf.keras.preprocessing.image.array_to_img(tf.tile(image, [1, 1, 3])))
+                im.save(save_directory + f'{idx_image}.png', format="PNG")
+                idx_image += 1
+    return x_processed
+
+
 def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
     """
-    Only for MNIST, for now.
     :param model:
     :param sigmas:
     :param eps:
     :param T:
     :return:
     """
-    image_size = (n_images, 32, 32, 3)
+    image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
 
     x = tf.random.uniform(shape=image_size)
-    # plot_grayscale(x[0, :, :, 0])
 
-    for i, sigma_i in enumerate(sigmas):
-        print(f"sigma {i + 1}/{len(sigmas)}")
+    for i, sigma_i in enumerate(tqdm(sigmas, desc='Sampling for each sigma')):
         alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
         idx_sigmas = tf.ones(n_images, dtype=tf.int32) * i
-        for t in tqdm(range(T)):
-            x = sample_one_step(model, x, idx_sigmas, image_size, alpha_i)
+        for t in range(T):
+            x = sample_one_step(model, x, idx_sigmas, alpha_i)
 
             if (t + 1) % 10 == 0:
                 save_as_grid(x, samples_directory + f'sigma{i + 1}_t{t + 1}.png')
-                # for j, sample_and_save in enumerate(x):
-                #     img = Image.fromarray((plt.get_cmap("gray")(sample_and_save[:, :, 0]) * 255).astype(np.uint8))
-                #     img.save(samples_directory + f'sample_{j}_{i + 1}.png')
-                # save_image(sample_and_save[:, :, 0], samples_directory + f'sample_{j}_{i+1}.png')
     return x
 
 
@@ -131,29 +170,18 @@ if __name__ == '__main__':
     args = utils.get_command_line_args()
     configs.config_values = args
 
+    save_dir = utils.get_savemodel_dir()
+    model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
-    dataset_name = 'cifar10'
-    model_directory = './saved_models/'
-    dataset = 'cifar10/'
-    filters = 64
 
-    step = tf.Variable(0)
-    model = RefineNet(filters=64, activation=tf.nn.elu)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-    latest_checkpoint = tf.train.latest_checkpoint(model_directory + dataset)
-    print("loading model from checkpoint ", latest_checkpoint)
-    ckpt = tf.train.Checkpoint(step=step, optimizer=optimizer, model=model)
-    ckpt.restore(latest_checkpoint)
+    model_directory = './saved_models/'
 
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(1.0),
                                            tf.math.log(0.01),
                                            10))
 
-    samples_directory = './samples/' + f'{start_time}_{dataset_name}_{step.numpy()}steps_{filters}filters' + "/"  # TODO: add number of steps in name
+    samples_directory = './samples/' + f'{start_time}_{configs.config_values.dataset}' \
+        f'_{step}steps_{configs.config_values.filters}filters' + "/"
     os.makedirs(samples_directory)
 
     samples = sample_and_save(model, sigma_levels, T=100, n_images=400)
-
-    # for i, sample_and_save in enumerate(samples):
-    #     # plot_grayscale(sample_and_save[:, :, 0])
-    #     save_image(sample_and_save[:, :, 0], samples_directory + f'sample_{i}.png')
