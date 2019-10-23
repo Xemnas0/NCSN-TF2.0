@@ -1,9 +1,22 @@
 import argparse
 import tensorflow as tf
+
+dict_datasets_image_size = {
+    'mnist': (28, 28, 1),
+    'cifar10': (32, 32, 3),
+    'celeb_a': (32, 32, 3)
+}
+
+
+def get_dataset_image_size(dataset_name):
+    return dict_datasets_image_size[dataset_name]
+
+
 def get_command_line_args():
     parser = argparse.ArgumentParser(description='I AM A HELP MESSAGE')
     parser.add_argument('--dataset', default='mnist',
                         help="tfds name of dataset (default: 'mnist')")
+    parser.add_argument('--baseline', default='store_true', help='Whether different baseline experiment (default: False)')
     parser.add_argument('--num_L', default=10, type=int,
                         help="number of levels of noise to use (default: 10)")
     parser.add_argument('--sigma_low', default=0.01, type=float,
@@ -23,8 +36,8 @@ def get_command_line_args():
     parser.add_argument('--resume', action='store_true',
                         help="whether to resume from latest checkpoint (default: False)")
 
-
     return parser.parse_args()
+
 
 def get_tensorflow_device():
     device = 'gpu:0' if tf.test.is_gpu_available() else 'cpu'
