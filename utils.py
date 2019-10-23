@@ -35,8 +35,8 @@ def get_command_line_args():
                         help="learning rate for the optimizer")
     parser.add_argument('--batch_size', default=128, type=int,
                         help="batch size (default: 128)")
-    parser.add_argument('--log_dir', default='./logs/',
-                        help="folder for saving logs (default: ./logs/)")
+    parser.add_argument('--samples_dir', default='./samples/',
+                        help="folder for saving samples (default: ./samples/)")
     parser.add_argument('--checkpoint_dir', default='./saved_models/',
                         help="folder for saving model checkpoints (default: ./saved_models/)")
     parser.add_argument('--checkpoint_freq', default=5000, type=int,
@@ -59,11 +59,11 @@ def get_savemodel_dir():
 
     # Folder name: model_name+filters+dataset+L
     if not configs.config_values.baseline:
-        folder_name = f'{models_dir}{model_name}{configs.config_values.filters}_{configs.config_values.dataset}_L{configs.config_values.num_L}/'
+        complete_model_name= f'{model_name}{configs.config_values.filters}_{configs.config_values.dataset}_L{configs.config_values.num_L}'
     else:
-        folder_name = f'{models_dir}{model_name}{configs.config_values.filters}_{configs.config_values.dataset}/'
-
-    return folder_name
+        complete_model_name = f'{model_name}{configs.config_values.filters}_{configs.config_values.dataset}'
+    folder_name = models_dir + complete_model_name + '/'
+    return folder_name, complete_model_name
 
 
 def print_model_summary(model):
