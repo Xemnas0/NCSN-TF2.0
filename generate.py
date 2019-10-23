@@ -51,7 +51,7 @@ def save_as_grid(images, filename, spacing=2):
     im.save(filename, format="PNG")
 
 
-@tf.function
+# @tf.function
 def sample_one_step(model, x, idx_sigmas, alpha_i):
     z_t = tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)  # TODO: check if stddev is correct
     score = model([x, idx_sigmas])
@@ -84,7 +84,7 @@ def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
             alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
             idx_sigmas = tf.ones(batch.get_shape()[0], dtype=tf.int32) * i
             for t in range(T):
-                sample_one_step(model, batch, idx_sigmas, alpha_i)
+                batch = sample_one_step(model, batch, idx_sigmas, alpha_i)
 
         with tf.device('CPU'):
             if x_processed is not None:
