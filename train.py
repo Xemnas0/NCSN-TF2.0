@@ -2,6 +2,7 @@ import tensorflow as tf
 import os
 from tqdm import tqdm
 from datetime import datetime
+import csv
 
 # our files
 from model.inception import Metrics
@@ -69,16 +70,16 @@ def train():
                                                tf.math.log(configs.config_values.sigma_low),
                                                configs.config_values.num_L))
 
-    # Compute inception score mean and standard deviation
-    sample_dir = configs.config_values.samples_dir + start_time + '_' + complete_model_name + '/'
-    sample_many_and_save(model, sigma_levels, n_images=2, save_directory=sample_dir)
-    sampled_images = sample_many(model, sigma_levels, n_images=2)
-    is_mean, is_stddev = metrics.compute_inception_score(sampled_images, image_side_inception=199)
-    print(f'Inception Score: {is_mean:.3} +- {is_stddev:.3}')
-    # Compute fid
-    test_data_inception = test_data.take(2176)
-    fid = metrics.compute_fid(images_1=sampled_images, data_2=test_data_inception, image_side_inception=199)
-    print(f'FID Score: {fid:.3}')
+    # # Compute inception score mean and standard deviation
+    # sample_dir = configs.config_values.samples_dir + start_time + '_' + complete_model_name + '/'
+    # sample_many_and_save(model, sigma_levels, n_images=2, save_directory=sample_dir)
+    # sampled_images = sample_many(model, sigma_levels, n_images=2)
+    # is_mean, is_stddev = metrics.compute_inception_score(sampled_images, image_side_inception=199)
+    # print(f'Inception Score: {is_mean:.3} +- {is_stddev:.3}')
+    # # Compute fid
+    # test_data_inception = test_data.take(2176)
+    # fid = metrics.compute_fid(images_1=sampled_images, data_2=test_data_inception, image_side_inception=199)
+    # print(f'FID Score: {fid:.3}')
 
     # training loop
     print(f'dataset: {configs.config_values.dataset}, '
@@ -90,6 +91,7 @@ def train():
     progress_bar = tqdm(train_data, total=total_steps, initial=step + 1)
     progress_bar.set_description(f'iteration {step}/{total_steps} | current loss ?')
 
+    loss_history = []
     with tf.device(device):  # For some reason, this makes everything faster
         avg_loss = 0
         for data_batch in progress_bar:
@@ -102,18 +104,23 @@ def train():
             data_batch_perturbed = data_batch + tf.random.normal(shape=data_batch.shape) * sigmas
 
             current_loss = train_one_step(model, optimizer, data_batch_perturbed, data_batch, idx_sigmas, sigmas)
-
-            tf.summary.scalar('loss', float(current_loss), step=int(step))
+            loss_history.append([step, current_loss.numpy()])
 
             progress_bar.set_description(f'iteration {step}/{total_steps} | current loss {current_loss:.3f}')
 
             avg_loss += current_loss
             if step % configs.config_values.checkpoint_freq == 0:
                 # TODO: maybe save also info about the sigmas
+                # Save checkpoint
                 ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
                 ckpt.step.assign_add(step)
                 ckpt.save(save_dir + f"{start_time}_step_{step}")
+                # Append in csv file
+                with open(save_dir+'loss_history.csv', mode='a', newline='') as csv_file:
+                    writer = csv.writer(csv_file, delimiter=';')
+                    writer.writerows(loss_history)
                 print(f"\nSaved checkpoint. Average loss: {avg_loss / configs.config_values.checkpoint_freq:.3f}")
+                loss_history = []
                 avg_loss = 0
             if step == total_steps:
                 return
