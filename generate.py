@@ -109,21 +109,16 @@ def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
     image_size = (n_images, 32, 32, 3)
 
     x = tf.random.uniform(shape=image_size)
-    # plot_grayscale(x[0, :, :, 0])
 
     for i, sigma_i in enumerate(sigmas):
         print(f"sigma {i + 1}/{len(sigmas)}")
         alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
         idx_sigmas = tf.ones(n_images, dtype=tf.int32) * i
         for t in tqdm(range(T)):
-            x = sample_one_step(model, x, idx_sigmas, image_size, alpha_i)
+            x = sample_one_step(model, x, idx_sigmas, alpha_i)
 
             if (t + 1) % 10 == 0:
                 save_as_grid(x, samples_directory + f'sigma{i + 1}_t{t + 1}.png')
-                # for j, sample_and_save in enumerate(x):
-                #     img = Image.fromarray((plt.get_cmap("gray")(sample_and_save[:, :, 0]) * 255).astype(np.uint8))
-                #     img.save(samples_directory + f'sample_{j}_{i + 1}.png')
-                # save_image(sample_and_save[:, :, 0], samples_directory + f'sample_{j}_{i+1}.png')
     return x
 
 
@@ -152,8 +147,4 @@ if __name__ == '__main__':
     samples_directory = './samples/' + f'{start_time}_{dataset_name}_{step.numpy()}steps_{filters}filters' + "/"  # TODO: add number of steps in name
     os.makedirs(samples_directory)
 
-    samples = sample_and_save(model, sigma_levels, T=100, n_images=400)
-
-    # for i, sample_and_save in enumerate(samples):
-    #     # plot_grayscale(sample_and_save[:, :, 0])
-    #     save_image(sample_and_save[:, :, 0], samples_directory + f'sample_{i}.png')
+    samples = sample_and_save(model, sigma_levels, T=100, n_images=9)
