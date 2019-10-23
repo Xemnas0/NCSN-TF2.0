@@ -126,6 +126,7 @@ if __name__ == '__main__':
     # TODO add these values to args
     N = 2  # number of images to occlude
     n = 5  # number of samples to generate for each occluded image
+    # mask_style = 'vertical_split'  # what kind of occlusion to use
     mask_style = 'vertical_split'  # what kind of occlusion to use
 
     # load data for inpainting (currently always N first data points from test data)
@@ -137,6 +138,8 @@ if __name__ == '__main__':
         mask = np.zeros(x.shape)
         if mask_style == 'vertical_split':
             mask[:, :, :x.shape[2]//2, :] += 1  # set left side to ones
+        elif mask_style == 'checkerboard':
+            mask[:, ::2, ::2, :] += 1  # set every other value to ones
         else:
             pass  # TODO add options here
 
