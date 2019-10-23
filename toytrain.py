@@ -1,3 +1,5 @@
+import csv
+
 from model.modelresnet import  ModelResNet
 from model.refinenet import RefineNet
 import tensorflow as tf
@@ -38,6 +40,16 @@ def manage_gpu_memory_usage():
             # Memory growth must be set before GPUs have been initialized
             print(e)
 
+
+@tf.function
+def train_one_step(model, data_batch, optimizer):
+    with tf.GradientTape(persistent=True) as t:
+        current_loss = ssm_loss(model, data_batch)
+        gradients = t.gradient(current_loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(gradients, model.trainable_variables))
+    return current_loss
+
+
 def train():
     device = utils.get_tensorflow_device()
 
@@ -53,9 +65,9 @@ def train():
         buffer_size=tf.data.experimental.AUTOTUNE)
     test_data = test_data.batch(configs.config_values.batch_size)
 
-    num_batches = int(tf.data.experimental.cardinality(train_data))
-    num_filters = {'mnist': 16, 'cifar10': 8,
-                   'celeb_a': 128}  # NOTE change mnist back to 64, cifar10 to 128 and celeb_a to 128
+    # num_batches = int(tf.data.experimental.cardinality(train_data))
+    # num_filters = {'mnist': 16, 'cifar10': 8,
+    #                'celeb_a': 128}  # NOTE change mnist back to 64, cifar10 to 128 and celeb_a to 128
 
     # path for saving the model(s)
     save_dir = configs.config_values.checkpoint_dir + configs.config_values.dataset + 'toy1' + '/'
@@ -63,7 +75,7 @@ def train():
     # os.makedirs(save_dir)
 
     start_time = datetime.now().strftime("%y%m%d-%H%M")
-    log_dir = configs.config_values.log_dir + configs.config_values.dataset + "/"
+    log_dir = configs.config_values.log_dir + configs.config_values.dataset + 'toy1' +"/"
     summary_writer = tf.summary.create_file_writer(log_dir + start_time)
 
     # initialize model
@@ -99,6 +111,7 @@ def train():
     progress_bar = tqdm(train_data, total=total_steps, initial=step + 1)
     progress_bar.set_description(f'iteration {step}/{total_steps} | current loss ?')
 
+    loss_history = []
     with tf.device(device):  # For some reason, this makes everything faster
         avg_loss = 0
         for data_batch in progress_bar:
@@ -108,24 +121,18 @@ def train():
                 sigmas = tf.reshape(sigma, shape=(data_batch.shape[0], 1, 1, 1))
                 data_batch = data_batch + tf.random.normal(shape=data_batch.shape) * sigmas
 
-            with tf.GradientTape(persistent=True) as t:
-                current_loss = ssm_loss(model, data_batch)
-                gradients = t.gradient(current_loss, model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-
-            tf.summary.scalar('loss', float(current_loss), step=int(step))
-
+            current_loss = train_one_step(model, data_batch, optimizer)
+            loss_history.append(current_loss)
             progress_bar.set_description(f'iteration {step}/{total_steps} | current loss {current_loss:.3f}')
 
             avg_loss += current_loss
             if step % configs.config_values.checkpoint_freq == 0:
-                # TODO: maybe save also info about the sigmas
-                ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
-                ckpt.step.assign_add(step)
-                ckpt.save(save_dir + f"{start_time}_step_{step}")
-                print(f"\nSaved checkpoint. Average loss: {avg_loss / configs.config_values.checkpoint_freq:.3f}")
+                print(f"\n Average loss: {avg_loss / configs.config_values.checkpoint_freq:.3f}")
                 avg_loss = 0
             if step == total_steps:
+                with open(save_dir + 'loss_history.csv', mode='a', newline='') as csv_file:
+                    writer = csv.writer(csv_file, delimiter=';')
+                    writer.writerows(loss_history)
                 return
 
     # NOTE bad way to choose the best model - saving all checkpoints and then testing after
