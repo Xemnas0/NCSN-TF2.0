@@ -7,7 +7,7 @@ from datetime import datetime
 from model.inception import Metrics
 from datasets.dataset_loader import get_train_test_data
 from losses.losses import loss_per_batch_alternative
-from generate import sample_many
+from generate import sample_many, sample_many_and_save
 import configs
 import utils
 
@@ -51,11 +51,11 @@ def train():
         buffer_size=tf.data.experimental.AUTOTUNE)
 
     # path for saving the model(s)
-    save_dir = utils.get_savemodel_dir()
+    save_dir, complete_model_name = utils.get_savemodel_dir()
 
-    start_time = datetime.now().strftime("%y%m%d-%H%M")
+    start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
-    model, optimizer, step = utils.try_load_model(save_dir)
+    model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
 
     metrics = Metrics()
 
@@ -70,7 +70,9 @@ def train():
                                                configs.config_values.num_L))
 
     # Compute inception score mean and standard deviation
-    sampled_images = sample_many(model, sigma_levels, n_images=2176)
+    sample_dir = configs.config_values.samples_dir + start_time + '_' + complete_model_name + '/'
+    sample_many_and_save(model, sigma_levels, n_images=2, save_directory=sample_dir)
+    sampled_images = sample_many(model, sigma_levels, n_images=2)
     is_mean, is_stddev = metrics.compute_inception_score(sampled_images, image_side_inception=199)
     print(f'Inception Score: {is_mean:.3} +- {is_stddev:.3}')
     # Compute fid
