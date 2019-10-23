@@ -124,10 +124,10 @@ if __name__ == '__main__':
                                            configs.config_values.num_L))
 
     # TODO add these values to args
-    N = 2  # number of images to occlude
+    N = 5  # number of images to occlude
     n = 5  # number of samples to generate for each occluded image
     # mask_style = 'vertical_split'  # what kind of occlusion to use
-    mask_style = 'vertical_split'  # what kind of occlusion to use
+    mask_style = 'middle'  # what kind of occlusion to use
 
     # load data for inpainting (currently always N first data points from test data)
     data = get_data_inpainting(configs.config_values.dataset, N)
@@ -138,6 +138,10 @@ if __name__ == '__main__':
         mask = np.zeros(x.shape)
         if mask_style == 'vertical_split':
             mask[:, :, :x.shape[2]//2, :] += 1  # set left side to ones
+        if mask_style == 'middle':
+            fifth = x.shape[2] // 5
+            mask[:, :, :2*fifth, :] += 1  # set stripe in the middle to ones
+            mask[:, :, -(2*fifth):, :] += 1  # set stripe in the middle to ones
         elif mask_style == 'checkerboard':
             mask[:, ::2, ::2, :] += 1  # set every other value to ones
         else:
