@@ -2,12 +2,14 @@ import tensorflow as tf
 import tensorflow_datasets as tfds
 import configs
 
+
 def load_data(dataset_name):
     # load data from tfds, TODO: add support for local datasets?
     data_generators = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", shuffle_files=False)
     train = tf.data.Dataset.from_tensor_slices(data_generators['train']['image'])
     test = tf.data.Dataset.from_tensor_slices(data_generators['test']['image'])
     return train, test
+
 
 def preprocess(dataset_name, data, train=True):
     # preprocessing step
@@ -23,6 +25,7 @@ def preprocess(dataset_name, data, train=True):
 
     return data
 
+
 def get_train_test_data(dataset_name):
     train, test = load_data(dataset_name)
     train = preprocess(dataset_name, train, train=True)
@@ -30,9 +33,18 @@ def get_train_test_data(dataset_name):
 
     return train, test
 
+
 def get_data_inpainting(dataset_name, n):
     data_generator = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", split='test')
     data = tf.data.Dataset.from_tensor_slices(data_generator['image']).take(n)
     data = preprocess(dataset_name, data, train=False)
 
     return data.batch(1)
+
+
+def get_data_k_nearest(dataset_name):
+    data_generator = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", split='train')
+    data = tf.data.Dataset.from_tensor_slices(data_generator['image'])
+    data = preprocess(dataset_name, data, train=True)
+
+    return data

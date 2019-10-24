@@ -1,7 +1,9 @@
 import argparse
 import tensorflow as tf
+import numpy as np
 
 from model.refinenet import RefineNet
+from datasets.dataset_loader import get_data_k_nearest
 
 import configs
 
@@ -10,6 +12,13 @@ dict_datasets_image_size = {
     'cifar10': (32, 32, 3),
     'celeb_a': (32, 32, 3)
 }
+
+
+def find_k_closest(image, k, data_as_array):
+    l2_distances = tf.norm(tf.norm(tf.norm(data_as_array - image, axis=3), axis=2), axis=1)
+    _, smallest_idx = tf.math.top_k(-l2_distances, k)
+    closest_k = tf.split(tf.gather(data_as_array, smallest_idx[:k]), k)
+    return closest_k
 
 
 def get_dataset_image_size(dataset_name):

@@ -8,6 +8,7 @@ from datetime import datetime
 import os
 from PIL import Image
 import numpy as np
+from datasets.dataset_loader import get_data_k_nearest
 
 
 def clamped(x):
@@ -114,7 +115,9 @@ def sample_many_and_save(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_i
     :param T: iteration per sigma level
     :return: Tensor of dimensions (n_images, width, height, channels)
     """
-    os.makedirs(save_directory)
+    if not os.path.exists(save_directory):
+        os.makedirs(save_directory)
+
     # Tuple for (n_images, width, height, channels)
     image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
     batch_size = min(batch_size, n_images)
@@ -122,7 +125,6 @@ def sample_many_and_save(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_i
     with tf.device('CPU'):
         x = tf.random.uniform(shape=image_size)
     x = tf.data.Dataset.from_tensor_slices(x).batch(batch_size)
-    x_processed = None
 
     idx_image = 0
     for i_batch, batch in enumerate(
@@ -140,10 +142,9 @@ def sample_many_and_save(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_i
                 im.paste(tf.keras.preprocessing.image.array_to_img(tf.tile(image, [1, 1, 3])))
                 im.save(save_directory + f'{idx_image}.png', format="PNG")
                 idx_image += 1
-    return x_processed
 
 
-def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
+def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directory=None):
     """
     :param model:
     :param sigmas:
@@ -151,6 +152,9 @@ def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
     :param T:
     :return:
     """
+    if not os.path.exists(save_directory):
+        os.makedirs(save_directory)
+
     image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
 
     x = tf.random.uniform(shape=image_size)
@@ -162,7 +166,7 @@ def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1):
             x = sample_one_step(model, x, idx_sigmas, alpha_i)
 
             if (t + 1) % 10 == 0:
-                save_as_grid(x, samples_directory + f'sigma{i + 1}_t{t + 1}.png')
+                save_as_grid(x, save_directory + f'sigma{i + 1}_t{t + 1}.png')
     return x
 
 
@@ -170,18 +174,35 @@ if __name__ == '__main__':
     args = utils.get_command_line_args()
     configs.config_values = args
 
-    save_dir = utils.get_savemodel_dir()
-    model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
+    save_dir, complete_model_name = utils.get_savemodel_dir()
+    model, optimizer, step = utils.try_load_model(save_dir, verbose=False)
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
     model_directory = './saved_models/'
 
+    # TODO make this take values from configs
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(1.0),
                                            tf.math.log(0.01),
                                            10))
 
     samples_directory = './samples/' + f'{start_time}_{configs.config_values.dataset}' \
         f'_{step}steps_{configs.config_values.filters}filters' + "/"
-    os.makedirs(samples_directory)
+    if not os.path.exists(samples_directory):
+        os.makedirs(samples_directory)
 
-    samples = sample_and_save(model, sigma_levels, T=100, n_images=400)
+    n_images = 10
+    samples = tf.split(sample_many(model, sigma_levels, T=100, n_images=n_images), n_images)
+
+    # TODO fix me!
+    find_k_closest = True
+    if find_k_closest:
+        k = 5
+        data_as_array = get_data_k_nearest(configs.config_values.dataset)
+        data_as_array = data_as_array.batch(int(tf.data.experimental.cardinality(data_as_array)))
+        data_as_array = tf.data.experimental.get_single_element(data_as_array)
+
+        for i, sample in enumerate(samples):
+            save_image(sample[0, :, :, 0], samples_directory + f'sample_{i}')
+            k_closest_images = utils.find_k_closest(sample, k, data_as_array)
+            for j, img in enumerate(k_closest_images):
+                save_image(img[0,:,:,0], samples_directory+f'sample_{i}_closest_{j}')
