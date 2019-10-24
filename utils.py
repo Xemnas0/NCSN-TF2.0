@@ -1,10 +1,7 @@
 import argparse
 import tensorflow as tf
 import numpy as np
-
 from model.refinenet import RefineNet
-from datasets.dataset_loader import get_data_k_nearest
-
 import configs
 
 dict_datasets_image_size = {
@@ -30,8 +27,9 @@ def get_command_line_args():
     parser.add_argument('--dataset', default='mnist',
                         help="tfds name of dataset (default: 'mnist')")
     parser.add_argument('--baseline', action='store_true',
-                        help='Whether different baseline experiment (default: False)')
-    parser.add_argument('--filters', default=128, type=int, help='Number of filters in the model. (default: 128)')
+                        help='whether to run baseline experiment with only one sigma (default: False)')
+    parser.add_argument('--filters', default=128, type=int,
+                        help='number of filters in the model. (default: 128)')
     parser.add_argument('--num_L', default=10, type=int,
                         help="number of levels of noise to use (default: 10)")
     parser.add_argument('--sigma_low', default=0.01, type=float,
@@ -52,6 +50,10 @@ def get_command_line_args():
                         help="how often to save a model checkpoint (default: 5000 iterations)")
     parser.add_argument('--resume', action='store_true',
                         help="whether to resume from latest checkpoint (default: False)")
+    parser.add_argument('--find_nearest', action='store_true',
+                        help="whether to find closest k neighbours in training set (default: False)")
+    parser.add_argument('--k', default=10, type=int,
+                        help='number of nearest neighbours to find from data (default: 10)')
 
     parser = parser.parse_args()
     print("=" * 20 + "\nParameters: \n")
@@ -118,3 +120,17 @@ def try_load_model(save_dir, verbose=True):
         print_model_summary(model)
 
     return model, optimizer, step
+
+
+def manage_gpu_memory_usage():
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            # Currently, memory growth needs to be the same across GPUs
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
+            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
+        except RuntimeError as e:
+            # Memory growth must be set before GPUs have been initialized
+            print(e)

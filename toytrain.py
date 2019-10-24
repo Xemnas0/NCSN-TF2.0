@@ -11,7 +11,7 @@ from datetime import datetime
 
 # our files
 from datasets.dataset_loader import get_train_test_data
-from losses.losses import ssm_loss, loss_per_batch_alternative
+from losses.losses import ssm_loss, dsm_loss
 import configs
 from generate import plot_grayscale
 

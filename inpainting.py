@@ -1,14 +1,17 @@
-import tensorflow as tf
-from model.refinenet import RefineNet
-import utils
-import configs
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-from datetime import datetime
 import os
-from PIL import Image
+from datetime import datetime
+
+import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
+from PIL import Image
+from tqdm import tqdm
+
+import configs
+import utils
 from datasets.dataset_loader import get_data_inpainting
+
+utils.manage_gpu_memory_usage()
 
 
 def clamped(x):
@@ -39,16 +42,16 @@ def save_as_grid(images, filename, spacing=2):
         row_start = i * height + (1 + i) * spacing
         col_start = spacing
 
-        im.paste(tf.keras.preprocessing.image.array_to_img(occluded_x[0,:,:,:]), (col_start, row_start))
+        im.paste(tf.keras.preprocessing.image.array_to_img(occluded_x[0, :, :, :]), (col_start, row_start))
 
         # plot the samples
         for j in range(len(samples)):
-            col_start = (j+1) * width + (j+2) * spacing + spacing
-            im.paste(tf.keras.preprocessing.image.array_to_img(samples[j][0,:,:,:]), (col_start, row_start))
+            col_start = (j + 1) * width + (j + 2) * spacing + spacing
+            im.paste(tf.keras.preprocessing.image.array_to_img(samples[j][0, :, :, :]), (col_start, row_start))
 
         # plot the original image
-        col_start = (len(samples)+1) * width + (len(samples)+2) * spacing + 2 * spacing
-        im.paste(tf.keras.preprocessing.image.array_to_img(x[0,:,:,:]), (col_start, row_start))
+        col_start = (len(samples) + 1) * width + (len(samples) + 2) * spacing + 2 * spacing
+        im.paste(tf.keras.preprocessing.image.array_to_img(x[0, :, :, :]), (col_start, row_start))
         # im.save(filename+"_n", format="PNG")
 
     im.save(filename, format="PNG")
@@ -57,7 +60,7 @@ def save_as_grid(images, filename, spacing=2):
 def save_image(image, filename):
     rgb = False if image.shape[-1] == 1 else True
     if len(image.shape) == 4:
-        image = image[0,:,:,0]
+        image = image[0, :, :, 0]
     if not rgb:
         plt.imshow(image, cmap="gray")
     else:
@@ -70,25 +73,21 @@ def inpaint_one_step(model, x_t, idx_sigmas, alpha_i):
     z_t = tf.random.normal(shape=x_t.shape, mean=0, stddev=1.0)
     score = model([x_t, idx_sigmas])
     noise = tf.sqrt(alpha_i) * z_t
-    return x_t + (alpha_i/2) * score + noise
+    return x_t + (alpha_i / 2) * score + noise
 
 
 def inpaint_x(model, sigmas, m, x, eps=2 * 1e-5, T=100):
-    # almost the same loop as generation except with mask
-    # TODO: merge this with generate? 
     x_t = tf.random.uniform(shape=x.shape)
     x_t = (x_t * (1 - m)) + (x * m)
 
     for i, sigma_i in enumerate(sigmas):
         alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
-        z = tf.random.normal(shape=x.shape, mean=0, stddev=sigma_i**2)
+        z = tf.random.normal(shape=x.shape, mean=0, stddev=sigma_i ** 2)
         y = x + z
         idx_sigmas = tf.ones(1, dtype=tf.int32) * i
         for t in range(T):
             x_t = inpaint_one_step(model, x_t, idx_sigmas, alpha_i)
             x_t = (x_t * (1 - m)) + (y * m)
-            # if (t + 1) % 10 == 0:
-            #     save_as_grid(x_t, samples_directory + f'sigma{i + 1}_t{t + 1}.png')
     return x_t
 
 
@@ -101,22 +100,16 @@ if __name__ == '__main__':
 
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
-    # construct path and folder TODO get this from some global function?
+    # construct path and folder
     checkpoint_dir = configs.config_values.checkpoint_dir
     dataset = configs.config_values.dataset
     samples_directory = f'./inpainting_results/{dataset}_{start_time}'
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 
-    # load model from checkpoint TODO also construct the path here using args?
-    step = tf.Variable(0)
-    model = RefineNet(filters=16, activation=tf.nn.elu) # TODO filters from args
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
-
-    latest_checkpoint = tf.train.latest_checkpoint(checkpoint_dir + dataset)
-    print("loading model from checkpoint ", latest_checkpoint)
-    ckpt = tf.train.Checkpoint(step=step, optimizer=optimizer, model=model)
-    ckpt.restore(latest_checkpoint)
+    # load model from checkpoint
+    save_dir, complete_model_name = utils.get_savemodel_dir()
+    model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
 
     # initialise sigmas
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
@@ -137,11 +130,11 @@ if __name__ == '__main__':
     for i, x in enumerate(data):
         mask = np.zeros(x.shape)
         if mask_style == 'vertical_split':
-            mask[:, :, :x.shape[2]//2, :] += 1  # set left side to ones
+            mask[:, :, :x.shape[2] // 2, :] += 1  # set left side to ones
         if mask_style == 'middle':
             fifth = x.shape[2] // 5
-            mask[:, :, :2*fifth, :] += 1  # set stripe in the middle to ones
-            mask[:, :, -(2*fifth):, :] += 1  # set stripe in the middle to ones
+            mask[:, :, :2 * fifth, :] += 1  # set stripe in the middle to ones
+            mask[:, :, -(2 * fifth):, :] += 1  # set stripe in the middle to ones
         elif mask_style == 'checkerboard':
             mask[:, ::2, ::2, :] += 1  # set every other value to ones
         else:

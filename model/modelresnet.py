@@ -8,8 +8,10 @@ class ModelResNet(keras.Model):
     def __init__(self, activation):
         super(ModelResNet, self).__init__()
 
+        # TODO: (1) Again, is this understood?
         self.increase_channels = layers.Conv2D(32, kernel_size=3, padding='same')
 
+        # TODO: THEY DON'T SEY IN THE PAPER HOW THE SUB- AND UPSAMPLING IS DONE? I TOOK STRIDE=2 FROM THEIR CODE.
         self.res_enc1 = ResidualBlock(activation, 32, is_encoder=True)
         self.res_enc2 = ResidualBlock(activation, 64, is_encoder=True, resize=True)
         self.res_enc3 = ResidualBlock(activation, 64, is_encoder=True)
@@ -22,6 +24,7 @@ class ModelResNet(keras.Model):
         self.res_dec4 = ResidualBlock(activation, 64, is_encoder=False, resize=True)
         self.res_dec5 = ResidualBlock(activation, 32, is_encoder=False)
 
+        # TODO: SEE (1).
         self.decrease_channels = None
 
     def build(self, input_shape):
@@ -54,7 +57,7 @@ class ResidualBlock(layers.Layer):
     def __init__(self, activation, filters, is_encoder, kernel_size=3, resize=False):
         super(ResidualBlock, self).__init__()
 
-        # FIXME: THEY USE GROUP NORMALIZATION, NOT SURE IF THIS MAKES A DIFFERENCE?
+        # FIXME: THEY DON'T MENTION WHAT KIND OF NORMALIZATION IS USED, I ASSUMED BN, BUT THEY USE GROUP NORMALIZATION, NOT SURE IF THIS MAKES A DIFFERENCE?
         self.norm1 = layers.BatchNormalization()
         self.norm2 = layers.BatchNormalization()
         self.activation = activation
@@ -79,7 +82,6 @@ class ResidualBlock(layers.Layer):
         self.decrease_skip_size = layers.Conv2DTranspose(self.filters, kernel_size=1, strides=self.strides)
 
     def call(self, inputs, **kwargs):
-        # TODO: CHECK IF INPUTS NEED TO BE SPLIT ?
         x = self.norm1(inputs)
         x = self.activation(x)
         x = self.conv1(x)

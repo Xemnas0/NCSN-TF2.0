@@ -1,34 +1,18 @@
-import tensorflow as tf
-import os
-from tqdm import tqdm
-from datetime import datetime
 import csv
+import os
+from datetime import datetime
 
-# our files
-from model.inception import Metrics
-from datasets.dataset_loader import get_train_test_data
-from losses.losses import loss_per_batch_alternative
-from generate import sample_many, sample_many_and_save
+import tensorflow as tf
+from tqdm import tqdm
+
 import configs
 import utils
+from datasets.dataset_loader import get_train_test_data
+from losses.losses import dsm_loss
+# our files
+from model.inception import Metrics
 
-
-def manage_gpu_memory_usage():
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    if gpus:
-        try:
-            # Currently, memory growth needs to be the same across GPUs
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
-            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-        except RuntimeError as e:
-            # Memory growth must be set before GPUs have been initialized
-            print(e)
-
-
-manage_gpu_memory_usage()
-
+utils.manage_gpu_memory_usage()
 device = utils.get_tensorflow_device()
 
 
@@ -36,7 +20,7 @@ device = utils.get_tensorflow_device()
 def train_one_step(model, optimizer, data_batch_perturbed, data_batch, idx_sigmas, sigmas):
     with tf.GradientTape() as t:
         scores = model([data_batch_perturbed, idx_sigmas])
-        current_loss = loss_per_batch_alternative(scores, data_batch_perturbed, data_batch, sigmas)
+        current_loss = dsm_loss(scores, data_batch_perturbed, data_batch, sigmas)
         gradients = t.gradient(current_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(gradients, model.trainable_variables))
     return current_loss
@@ -112,7 +96,7 @@ def train():
                 ckpt.step.assign_add(step)
                 ckpt.save(save_dir + "{}_step_{}".format(start_time, step))
                 # Append in csv file
-                with open(save_dir+'loss_history.csv', mode='a', newline='') as csv_file:
+                with open(save_dir + 'loss_history.csv', mode='a', newline='') as csv_file:
                     writer = csv.writer(csv_file, delimiter=';')
                     writer.writerows(loss_history)
                 print("\nSaved checkpoint. Average loss: {:.3f}".format(avg_loss / configs.config_values.checkpoint_freq))
