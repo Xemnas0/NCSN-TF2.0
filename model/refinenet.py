@@ -21,8 +21,8 @@ class RefineNet(keras.Model):
         #  ==> First one should be subsampling, but it's not? So, pooling = True in the preact_1 and dilations 2, 4, 6
         #  in others (note: dilation does not change the size of the image as we thought before, so this might be ok?)
         # TODO: If the first block is subsampling, then it should not have dilated according to their description ("REPLACE").
-        self.preact_1 = ConditionalFullPreActivationBlock(activation, filters, kernel_size=3,  pooling=True)
-        self.preact_2 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=2, padding=2)
+        self.preact_1 = ConditionalFullPreActivationBlock(activation, filters, kernel_size=3)
+        self.preact_2 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, pooling=True)
         self.preact_3 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=2, padding=2)
         self.preact_4 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=4, padding=4)
         # Increasing the dilation even more would not help - WHY THOUGH? Antonio, 24/10/2019
