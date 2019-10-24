@@ -100,9 +100,9 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
         self.n_blocks = n_blocks
         self.pooling_size = pooling_size
         for n in range(n_blocks):
-            setattr(self, f'norm1{n}', ConditionalInstanceNormalizationPlusPlus2D())
-            setattr(self, f'conv{n}', layers.Conv2D(filters, kernel_size, padding='same'))
-            setattr(self, f'norm2{n}', ConditionalInstanceNormalizationPlusPlus2D())
+            setattr(self, 'norm1{}'.format(n), ConditionalInstanceNormalizationPlusPlus2D())
+            setattr(self, 'conv{}'.format(n), layers.Conv2D(filters, kernel_size, padding='same'))
+            setattr(self, 'norm2{}'.format(n), ConditionalInstanceNormalizationPlusPlus2D())
 
     # TODO: WHERE IS ACTIVATION? NORM COMES BEFORE EVERY CONV AND POOLING?
     def call(self, inputs, **kwargs):
@@ -110,9 +110,9 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
         x_residual = self.activation1(x)
         x = x_residual
         for n in range(self.n_blocks):
-            norm1 = getattr(self, f'norm1{n}')
-            conv = getattr(self, f'conv{n}')
-            norm2 = getattr(self, f'norm2{n}')
+            norm1 = getattr(self, 'norm1{}'.format(n))
+            conv = getattr(self, 'conv{}').format(n)
+            norm2 = getattr(self, 'norm2{}'.format(n))
 
             x = norm1([x, idx_sigmas])
             x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='SAME')
@@ -175,9 +175,9 @@ class RefineBlock(layers.Layer):
 
     def build(self, input_shape):
         for n in range(self.n_blocks_rcu):
-            setattr(self, f'rcu_high{n}', RCUBlock(self.activation, self.filters, self.kernel_size))
+            setattr(self, 'rcu_high{}'.format(n), RCUBlock(self.activation, self.filters, self.kernel_size))
             if len(input_shape) == 2:
-                setattr(self, f'rcu_low{n}', RCUBlock(self.activation, self.filters, self.kernel_size))
+                setattr(self, 'rcu_low{}'.format(n), RCUBlock(self.activation, self.filters, self.kernel_size))
 
     def call(self, inputs, **kwargs):
         idx_sigmas = inputs[1]
@@ -185,7 +185,7 @@ class RefineBlock(layers.Layer):
             high_input = inputs[0][0]
 
             for n in range(self.n_blocks_rcu):
-                rcu_high = getattr(self, f'rcu_high{n}')
+                rcu_high = getattr(self, 'rcu_high{}'.format(n))
                 high_input = rcu_high([high_input, idx_sigmas])
 
             x = self.mrf([[high_input], idx_sigmas])
@@ -194,8 +194,8 @@ class RefineBlock(layers.Layer):
             high_input, low_input = inputs[0]
 
             for n in range(self.n_blocks_rcu):
-                rcu_high = getattr(self, f'rcu_high{n}')
-                rcu_low = getattr(self, f'rcu_low{n}')
+                rcu_high = getattr(self, 'rcu_high{}'.format(n))
+                rcu_low = getattr(self, 'rcu_low{}'.format(n))
                 high_input = rcu_high([high_input, idx_sigmas])
                 low_input = rcu_low([low_input, idx_sigmas])
 
