@@ -81,12 +81,6 @@ def train():
     # fid = metrics.compute_fid(images_1=sampled_images, data_2=test_data_inception, image_side_inception=199)
     # print(f'FID Score: {fid:.3}')
 
-    # training loop
-    print(f'dataset: {configs.config_values.dataset}, '
-          f'number of examples: {num_examples}, '
-          f'batch size: {configs.config_values.batch_size}\n'
-          f'training...')
-
     total_steps = configs.config_values.steps
     progress_bar = tqdm(train_data, total=total_steps, initial=step + 1)
     progress_bar.set_description(f'iteration {step}/{total_steps} | current loss ?')
