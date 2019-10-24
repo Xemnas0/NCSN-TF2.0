@@ -111,7 +111,7 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
         x = x_residual
         for n in range(self.n_blocks):
             norm1 = getattr(self, 'norm1{}'.format(n))
-            conv = getattr(self, 'conv{}').format(n)
+            conv = getattr(self, 'conv{}'.format(n))
             norm2 = getattr(self, 'norm2{}'.format(n))
 
             x = norm1([x, idx_sigmas])
