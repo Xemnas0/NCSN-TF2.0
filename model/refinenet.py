@@ -1,10 +1,8 @@
 import tensorflow as tf
 import tensorflow.keras as keras
 import tensorflow.keras.layers as layers
-from tqdm import tqdm
 
-from model.layers import RefineBlock, ConditionalFullPreActivationBlock, DilatedConv2D, \
-    ConditionalInstanceNormalizationPlusPlus2D
+from model.layers import RefineBlock, ConditionalFullPreActivationBlock, ConditionalInstanceNormalizationPlusPlus2D
 
 
 class RefineNet(keras.Model):
@@ -36,7 +34,7 @@ class RefineNet(keras.Model):
 
         self.norm = ConditionalInstanceNormalizationPlusPlus2D()
         # self.activation = activation  # TODO: This isn't mentioned in the paper.
-        self.decrease_channels = None # TODO: Neither is this, see (1).
+        self.decrease_channels = None  # TODO: Neither is this, see (1).
 
     def build(self, input_shape):
         # Here we get the depth of the image that is passed to the model at the start, i.e. 1 for MNIST.

@@ -1,14 +1,17 @@
-import tensorflow as tf
-from model.refinenet import RefineNet
-import utils
-import configs
-import matplotlib.pyplot as plt
-from tqdm import tqdm
-from datetime import datetime
 import os
-from PIL import Image
+from datetime import datetime
+
+import matplotlib.pyplot as plt
 import numpy as np
+import tensorflow as tf
+from PIL import Image
+from tqdm import tqdm
+
+import configs
+import utils
 from datasets.dataset_loader import get_data_k_nearest
+
+utils.manage_gpu_memory_usage()
 
 
 def clamped(x):
@@ -183,31 +186,27 @@ if __name__ == '__main__':
 
     model_directory = './saved_models/'
 
-    # TODO make this take values from configs
-    sigma_levels = tf.math.exp(tf.linspace(tf.math.log(1.0),
-                                           tf.math.log(0.01),
-                                           10))
+    sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
+                                           tf.math.log(configs.config_values.sigma_high),
+                                           configs.config_values.num_L))
 
     samples_directory = './samples/' + f'{start_time}_{configs.config_values.dataset}' \
-        f'_{step}steps_{configs.config_values.filters}filters' + "/"
+                                       f'_{step}steps_{configs.config_values.filters}filters' + "/"
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 
-    n_images = 100
-    sample_and_save(model, sigma_levels, n_images=n_images, save_directory=samples_directory)
-    exit(-1)
-    samples = tf.split(sample_many(model, sigma_levels, T=100, n_images=n_images), n_images)
-
-    # TODO fix me!
-    find_k_closest = True
-    if find_k_closest:
-        k = 5
+    if configs.config_values.find_nearest:
+        n_images = 10  # TODO make this not be hard-coded
+        samples = tf.split(sample_many(model, sigma_levels, T=100, n_images=n_images), n_images)
         data_as_array = get_data_k_nearest(configs.config_values.dataset)
         data_as_array = data_as_array.batch(int(tf.data.experimental.cardinality(data_as_array)))
         data_as_array = tf.data.experimental.get_single_element(data_as_array)
 
         for i, sample in enumerate(samples):
             save_image(sample[0, :, :, 0], samples_directory + f'sample_{i}')
-            k_closest_images = utils.find_k_closest(sample, k, data_as_array)
+            k_closest_images = utils.find_k_closest(sample, configs.config_values.k, data_as_array)
             for j, img in enumerate(k_closest_images):
-                save_image(img[0,:,:,0], samples_directory+f'sample_{i}_closest_{j}')
+                save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
+    else:
+        n_images = 100
+        sample_and_save(model, sigma_levels, n_images=n_images, save_directory=samples_directory)

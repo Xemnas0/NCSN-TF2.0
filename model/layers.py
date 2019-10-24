@@ -1,15 +1,11 @@
 import tensorflow as tf
-import tensorflow.keras.layers as layers  # TODO: check if we should use keras or tf.keras
+import tensorflow.keras.layers as layers
+
 import configs
 
+
 # TODO: A general note: Should we have @tf.function above each function here?
-
 # TODO: They don't say how they downsample. This should be changed perhaps?
-@tf.function
-def custom_pooling(x):
-    x = tf.nn.avg_pool2d(x, ksize=2, strides=2, padding='SAME')
-    return x
-
 
 class DilatedConv2D(layers.Layer):
     def __init__(self, filters, kernel_size=3, dilation=1, padding=1, strides=1):
@@ -18,12 +14,6 @@ class DilatedConv2D(layers.Layer):
         self.padding = layers.ZeroPadding2D(padding)
         self.conv = layers.Conv2D(filters, kernel_size, strides=strides, dilation_rate=dilation, padding='valid')
         self.filters = filters
-
-    # def compute_output_shape(self, input_shape):
-    #     # print(f"input shape: {input_shape}")
-    #
-    #     output_shape = (input_shape[0], input_shape[1], input_shape[2], self.filters)
-    #     return output_shape
 
     def call(self, inputs, **kwargs):
         x = self.padding(inputs)
@@ -46,14 +36,6 @@ class ConditionalFullPreActivationBlock(layers.Layer):
 
         self.filters = filters
 
-    # def build(self, input_shape):
-    #     print(f"Output shape: {self.compute_output_shape(input_shape)}")
-
-    # def compute_output_shape(self, input_shape):
-    #     print("input shape residual block: "+str(input_shape))
-    #     output_shape = (input_shape[0][0], input_shape[0][1], input_shape[0][2], self.filters)
-    #     return output_shape
-
     def call(self, inputs, **kwargs):
         skip_x, idx_sigmas = inputs
         x = self.norm1([skip_x, idx_sigmas])
@@ -64,13 +46,11 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         x = self.conv2(x)
 
         if x.shape != skip_x.shape:
-            skip_x = self.increase_channels_skip(skip_x) # TODO: this should be performed before each pooling as well
+            skip_x = self.increase_channels_skip(skip_x)  # TODO: this should be performed before each pooling as well
 
         if self.pooling:
-            # x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='VALID')
-            # skip_x = tf.nn.avg_pool2d(skip_x, self.pooling_size, strides=1, padding='VALID')
-            x = custom_pooling(x)
-            skip_x = custom_pooling(skip_x)
+            x = tf.nn.avg_pool2d(x, ksize=2, strides=2, padding='SAME')
+            skip_x = tf.nn.avg_pool2d(skip_x, ksize=2, strides=2, padding='SAME')
 
         return skip_x + x
 
@@ -87,22 +67,20 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
 
         # self.init_weights = 'random_normal'  # tf.initializers.RandomNormal(1, 0.02)
         # TODO: This initialization was not give in the paper. Usual practice: bias to zeros, weights to ones
-        self.init_weights = 'ones' #tf.random_normal_initializer(1, 0.02)
+        self.init_weights = 'ones'  # tf.random_normal_initializer(1, 0.02)
         self.init_bias = 'zeros'
 
     def build(self, input_shape):
         self.C = input_shape[0][-1]
-        self.alpha = self.add_weight(name=self.name+'_alpha', shape=(self.L, 1, 1, self.C),
+        self.alpha = self.add_weight(name=self.name + '_alpha', shape=(self.L, 1, 1, self.C),
                                      initializer=self.init_weights)
-        self.beta = self.add_weight(name=self.name+'_beta', shape=(self.L, 1, 1, self.C), initializer=self.init_bias)
-        self.gamma = self.add_weight(name=self.name+'_gamma', shape=(self.L, 1, 1, self.C), initializer=self.init_weights)
-
-        # TODO: WHY IS THIS HERE? I think I remeber...
-        # super(ConditionalInstanceNormalizationPlusPlus2D, self).build(input_shape)
+        self.beta = self.add_weight(name=self.name + '_beta', shape=(self.L, 1, 1, self.C), initializer=self.init_bias)
+        self.gamma = self.add_weight(name=self.name + '_gamma', shape=(self.L, 1, 1, self.C),
+                                     initializer=self.init_weights)
 
     def call(self, inputs, **kwargs):
         x, idx_sigmas = inputs
-        mu, s = tf.nn.moments(x, axes=[1,2], keepdims=True)
+        mu, s = tf.nn.moments(x, axes=[1, 2], keepdims=True)
         m, v = tf.nn.moments(mu, axes=[-1], keepdims=True)
 
         first = tf.gather(self.gamma, idx_sigmas) * (x - mu) / tf.sqrt(s + 1e-6)
@@ -112,6 +90,7 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
         z = first + second + third
 
         return z
+
 
 # TODO: Pooling size taken from RefineNet
 class ConditionalChainedResidualPooling2D(layers.Layer):
@@ -125,8 +104,6 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
             setattr(self, f'conv{n}', layers.Conv2D(filters, kernel_size, padding='same'))
             setattr(self, f'norm2{n}', ConditionalInstanceNormalizationPlusPlus2D())
 
-        # self.pooling = layers.AveragePooling2D(pooling_size, padding='same')
-
     # TODO: WHERE IS ACTIVATION? NORM COMES BEFORE EVERY CONV AND POOLING?
     def call(self, inputs, **kwargs):
         x, idx_sigmas = inputs
@@ -138,7 +115,6 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
             norm2 = getattr(self, f'norm2{n}')
 
             x = norm1([x, idx_sigmas])
-            # x = self.pooling(x)
             x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='SAME')
             x = norm2([x, idx_sigmas])
             x = conv(x)
@@ -146,23 +122,6 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
         return x_residual
 
 
-# class ResidualConvUnit(layers.Layer):
-#     def __init__(self, filters, kernel_size=3):
-#         super(ResidualConvUnit, self).__init__()
-#         # todo: add conditional instance normalization ++
-#         # todo: dilated?
-#         self.conv1 = layers.Conv2D(filters, kernel_size)
-#         self.conv2 = layers.Conv2D(filters, kernel_size)
-#
-#     def call(self, input, **kwargs):
-#         x = tf.nn.elu(input)
-#         x = self.conv1(x)
-#         x = tf.nn.elu(x)
-#         x = self.conv2(x)
-#         return tf.add(x, input)
-#
-
-# TODO: THEY DON'T DO SOMETHING AT THE LOWEST CASCADE? DON'T REMEMBER WHAT, DO WE DO THAT?
 # TODO: HOW TO DO THE UPSAMPLING? THEY DON'T SAY IT IN THE PAPER
 class MultiResolutionFusion(layers.Layer):
     def __init__(self, filters, kernel_size=3):
@@ -191,12 +150,8 @@ class MultiResolutionFusion(layers.Layer):
         elif len(inputs[0]) == 2:
             high_input, low_input = inputs[0]
 
-            # FIXME: make me any beautiful
-            # upsample = layers.UpSampling2D(high_input.shape[1:-1])
-
             low_input = self.norm_low([low_input, idx_sigmas])
             low_input = self.conv2d_low(low_input)
-            # low_input = upsample(low_input)
             low_input = tf.image.resize(low_input, high_input.shape[1:-1])
             high_input = self.norm_high([high_input, idx_sigmas])
             high_input = self.conv2d_high(high_input)
@@ -212,14 +167,11 @@ class RefineBlock(layers.Layer):
         self.filters = filters
         self.kernel_size = kernel_size
 
-        # NOTE: they use 2 block, we use 1 for now
         self.n_blocks_rcu = n_blocks_rcu
 
         self.mrf = MultiResolutionFusion(filters, kernel_size)
-
         self.crp = ConditionalChainedResidualPooling2D(n_blocks_crp, activation, filters, kernel_size, pooling_size)
-
-        self.rcu_end = RCUBlock(activation, filters, kernel_size)  # TODO: IN THEIR CODE THEY DO 3 AT THE END END. NOT MENTIONED IN THE PAPER, LET'S IGNORE THIS MAYBE.
+        self.rcu_end = RCUBlock(activation, filters, kernel_size)
 
     def build(self, input_shape):
         for n in range(self.n_blocks_rcu):

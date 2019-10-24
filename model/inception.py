@@ -8,6 +8,7 @@ from scipy.stats import entropy
 from tqdm import tqdm
 from scipy import linalg
 
+
 class Metrics:
     def __init__(self):
         self.model = tf.keras.applications.inception_v3.InceptionV3()
