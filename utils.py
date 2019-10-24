@@ -54,16 +54,16 @@ def get_command_line_args():
                         help="whether to resume from latest checkpoint (default: False)")
 
     parser = parser.parse_args()
-    print("="*20+"\nParameters: \n")
+    print("=" * 20 + "\nParameters: \n")
     for key in parser.__dict__:
-       print(key + ': '+ str(parser.__dict__[key]))
-    print("="*20+"\n")
+        print(key + ': ' + str(parser.__dict__[key]))
+    print("=" * 20 + "\n")
     return parser
 
 
 def get_tensorflow_device():
     device = 'gpu:0' if tf.test.is_gpu_available() else 'cpu'
-    print(f"Using device {device}")
+    print("Using device {}".format(device))
     return device
 
 
@@ -73,9 +73,10 @@ def get_savemodel_dir():
 
     # Folder name: model_name+filters+dataset+L
     if not configs.config_values.baseline:
-        complete_model_name= f'{model_name}{configs.config_values.filters}_{configs.config_values.dataset}_L{configs.config_values.num_L}'
+        complete_model_name = '{}{}_{}_L{}'.format(model_name, configs.config_values.filters,
+                                                   configs.config_values.dataset, configs.config_values.num_L)
     else:
-        complete_model_name = f'{model_name}{configs.config_values.filters}_{configs.config_values.dataset}'
+        complete_model_name = '{}{}_{}'.format(model_name, configs.config_values.filters, configs.config_values.dataset)
     folder_name = models_dir + complete_model_name + '/'
     return folder_name, complete_model_name
 
@@ -107,7 +108,7 @@ def try_load_model(save_dir, verbose=True):
         if latest_checkpoint is None:
             print("No model found. Using a new model")
         else:
-            print("Loaded model: "+latest_checkpoint)
+            print("Loaded model: " + latest_checkpoint)
             step = tf.Variable(0)
             ckpt = tf.train.Checkpoint(step=step, optimizer=optimizer, model=model)
             ckpt.restore(latest_checkpoint)

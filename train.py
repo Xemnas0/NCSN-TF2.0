@@ -83,7 +83,7 @@ def train():
 
     total_steps = configs.config_values.steps
     progress_bar = tqdm(train_data, total=total_steps, initial=step + 1)
-    progress_bar.set_description(f'iteration {step}/{total_steps} | current loss ?')
+    progress_bar.set_description('iteration {}/{} | current loss ?'.format(step, total_steps))
 
     loss_history = []
     with tf.device(device):  # For some reason, this makes everything faster
@@ -100,7 +100,9 @@ def train():
             current_loss = train_one_step(model, optimizer, data_batch_perturbed, data_batch, idx_sigmas, sigmas)
             loss_history.append([step, current_loss.numpy()])
 
-            progress_bar.set_description(f'iteration {step}/{total_steps} | current loss {current_loss:.3f}')
+            progress_bar.set_description('iteration {}/{} | current loss {:.3f}'.format(
+                step, total_steps, current_loss
+            ))
 
             avg_loss += current_loss
             if step % configs.config_values.checkpoint_freq == 0:
@@ -108,12 +110,12 @@ def train():
                 # Save checkpoint
                 ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
                 ckpt.step.assign_add(step)
-                ckpt.save(save_dir + f"{start_time}_step_{step}")
+                ckpt.save(save_dir + "{}_step_{}".format(start_time, step))
                 # Append in csv file
                 with open(save_dir+'loss_history.csv', mode='a', newline='') as csv_file:
                     writer = csv.writer(csv_file, delimiter=';')
                     writer.writerows(loss_history)
-                print(f"\nSaved checkpoint. Average loss: {avg_loss / configs.config_values.checkpoint_freq:.3f}")
+                print("\nSaved checkpoint. Average loss: {:.3f}".format(avg_loss / configs.config_values.checkpoint_freq))
                 loss_history = []
                 avg_loss = 0
             if step == total_steps:
