@@ -2,9 +2,12 @@ import tensorflow as tf
 import tensorflow.keras.layers as layers  # TODO: check if we should use keras or tf.keras
 import configs
 
+# TODO: A general note: Should we have @tf.function above each function here?
+
+# TODO: They don't say how they downsample. This should be changed perhaps?
 @tf.function
 def custom_pooling(x):
-    x = tf.reduce_sum([x[:, ::2, ::2, :], x[:, 1::2, ::2, :], x[:, ::2, 1::2, :], x[:, 1::2, 1::2, :]], axis=0) / 4.0
+    x = tf.nn.avg_pool2d(x, ksize=2, strides=2, padding='SAME')
     return x
 
 
@@ -31,7 +34,6 @@ class DilatedConv2D(layers.Layer):
 class ConditionalFullPreActivationBlock(layers.Layer):
     def __init__(self, activation, filters, kernel_size=3, dilation=1, padding=1, pooling=False):
         super(ConditionalFullPreActivationBlock, self).__init__()
-        # todo: check why 2 preactivation_blocks blocks, does it work with 1?
 
         self.norm1 = ConditionalInstanceNormalizationPlusPlus2D()
         self.conv1 = DilatedConv2D(filters, kernel_size, dilation, padding)
@@ -84,24 +86,25 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
         self.L = configs.config_values.num_L
 
         # self.init_weights = 'random_normal'  # tf.initializers.RandomNormal(1, 0.02)
-        self.init_weights = tf.random_normal_initializer(1, 0.02)
+        # TODO: This initialization was not give in the paper. Usual practice: bias to zeros, weights to ones
+        self.init_weights = 'ones' #tf.random_normal_initializer(1, 0.02)
         self.init_bias = 'zeros'
 
     def build(self, input_shape):
-        self.C = input_shape[0][-1]  # FIXME: I might not be what you think I am. Zero?
+        self.C = input_shape[0][-1]
         self.alpha = self.add_weight(name=self.name+'_alpha', shape=(self.L, 1, 1, self.C),
-                                     initializer=self.init_weights)  # TODO: maybe change init
+                                     initializer=self.init_weights)
         self.beta = self.add_weight(name=self.name+'_beta', shape=(self.L, 1, 1, self.C), initializer=self.init_bias)
         self.gamma = self.add_weight(name=self.name+'_gamma', shape=(self.L, 1, 1, self.C), initializer=self.init_weights)
 
-        super(ConditionalInstanceNormalizationPlusPlus2D, self).build(input_shape)
+        # TODO: WHY IS THIS HERE? I think I remeber...
+        # super(ConditionalInstanceNormalizationPlusPlus2D, self).build(input_shape)
 
     def call(self, inputs, **kwargs):
         x, idx_sigmas = inputs
-        mu, s = tf.nn.moments(x, axes=[1,2], keepdims=True)  # FIXME: I might not be what you think I am. One?
+        mu, s = tf.nn.moments(x, axes=[1,2], keepdims=True)
         m, v = tf.nn.moments(mu, axes=[-1], keepdims=True)
 
-        # FIXED (maybe)
         first = tf.gather(self.gamma, idx_sigmas) * (x - mu) / tf.sqrt(s + 1e-6)
         second = tf.gather(self.beta, idx_sigmas)
         third = tf.gather(self.alpha, idx_sigmas) * (mu - m) / tf.sqrt(v + 1e-6)
@@ -110,7 +113,7 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
 
         return z
 
-
+# TODO: Pooling size taken from RefineNet
 class ConditionalChainedResidualPooling2D(layers.Layer):
     def __init__(self, n_blocks, activation, filters, kernel_size=3, pooling_size=5):
         super(ConditionalChainedResidualPooling2D, self).__init__()
@@ -118,20 +121,26 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
         self.n_blocks = n_blocks
         self.pooling_size = pooling_size
         for n in range(n_blocks):
-            setattr(self, f'norm{n}', ConditionalInstanceNormalizationPlusPlus2D())
+            setattr(self, f'norm1{n}', ConditionalInstanceNormalizationPlusPlus2D())
             setattr(self, f'conv{n}', layers.Conv2D(filters, kernel_size, padding='same'))
+            setattr(self, f'norm2{n}', ConditionalInstanceNormalizationPlusPlus2D())
+
         # self.pooling = layers.AveragePooling2D(pooling_size, padding='same')
 
+    # TODO: WHERE IS ACTIVATION? NORM COMES BEFORE EVERY CONV AND POOLING?
     def call(self, inputs, **kwargs):
         x, idx_sigmas = inputs
         x_residual = self.activation1(x)
         x = x_residual
         for n in range(self.n_blocks):
-            norm = getattr(self, f'norm{n}')
+            norm1 = getattr(self, f'norm1{n}')
             conv = getattr(self, f'conv{n}')
-            x = norm([x, idx_sigmas])
+            norm2 = getattr(self, f'norm2{n}')
+
+            x = norm1([x, idx_sigmas])
             # x = self.pooling(x)
             x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='SAME')
+            x = norm2([x, idx_sigmas])
             x = conv(x)
             x_residual += x
         return x_residual
@@ -152,6 +161,9 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
 #         x = self.conv2(x)
 #         return tf.add(x, input)
 #
+
+# TODO: THEY DON'T DO SOMETHING AT THE LOWEST CASCADE? DON'T REMEMBER WHAT, DO WE DO THAT?
+# TODO: HOW TO DO THE UPSAMPLING? THEY DON'T SAY IT IN THE PAPER
 class MultiResolutionFusion(layers.Layer):
     def __init__(self, filters, kernel_size=3):
         super(MultiResolutionFusion, self).__init__()
@@ -207,7 +219,7 @@ class RefineBlock(layers.Layer):
 
         self.crp = ConditionalChainedResidualPooling2D(n_blocks_crp, activation, filters, kernel_size, pooling_size)
 
-        self.rcu_end = RCUBlock(activation, filters, kernel_size)
+        self.rcu_end = RCUBlock(activation, filters, kernel_size)  # TODO: IN THEIR CODE THEY DO 3 AT THE END END. NOT MENTIONED IN THE PAPER, LET'S IGNORE THIS MAYBE.
 
     def build(self, input_shape):
         for n in range(self.n_blocks_rcu):
@@ -240,19 +252,3 @@ class RefineBlock(layers.Layer):
         x = self.crp([x, idx_sigmas])
         x = self.rcu_end([x, idx_sigmas])
         return x
-
-# class TestLayer(layers.Layer):
-#     def __init__(self):
-#         super(TestLayer, self).__init__()
-#
-#     def build(self, input_shape):
-#         print(input_shape)
-#
-#     def call(self, inputs, **kwargs):
-#         return inputs
-#
-#
-# if __name__ == '__main__':
-#     layer = TestLayer()
-#     x = [tf.convert_to_tensor(list(range(10))), None]
-#     output = layer(x)
