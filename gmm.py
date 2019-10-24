@@ -128,7 +128,7 @@ def annealed_langevin_dynamics(analytic_log_prob_grad, gmm, x, sigmas, eps=0.1, 
     for i, sigma_i in enumerate(tqdm(sigmas)):
         alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
         # idx_sigmas = tf.ones(x.get_shape()[0], dtype=tf.int32) * i
-        x = langevin_dynamics(analytic_log_prob_grad, gmm, x, sigma_i, alpha_i, T) # TODO: WHERE DO WE USE SIGMA HERE IF THE GRADIENTS ARE EXACT, I.E. NOT CONDITIONAL ON SIGMA?
+        x = langevin_dynamics(analytic_log_prob_grad, gmm, x, sigma_i, alpha_i, T)
     return x
 
 if __name__ == "__main__":
@@ -165,7 +165,7 @@ if __name__ == "__main__":
     # samples_langevin = langevin_dynamics(analytic_log_prob_grad, gmm, x_init)
 
     # annealed Langevin dynamics
-    # TODO: THEY REPORT DIFFERENT LOW_SIGMA (SHOULD BE LOG(.))
+    # TODO: THEY REPORT DIFFERENT LOW_SIGMA IN THE PAPER, IT DOESN'T WORK WITH WHAT THEY PROVIDE
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(10.0),
                                            0.1,
                                            10))
@@ -173,8 +173,3 @@ if __name__ == "__main__":
 
     # plot samples
     visualize_samples(samples_annealed_langevin)
-
-
-
-
-# TODO: Compute grad_log_p, score, langevine_dynamics, annealed_langevine_dynamics
