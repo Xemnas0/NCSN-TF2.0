@@ -1,2 +1,2 @@
 #!/usr/bin/env
-python train.py --dataset mnist --filters 64
+python3 train.py --dataset mnist --filters 64
