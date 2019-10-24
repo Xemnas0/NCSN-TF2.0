@@ -53,7 +53,12 @@ def get_command_line_args():
     parser.add_argument('--resume', action='store_true',
                         help="whether to resume from latest checkpoint (default: False)")
 
-    return parser.parse_args()
+    parser = parser.parse_args()
+    print("="*20+"\nParameters: \n")
+    for key in parser.__dict__:
+       print(key + ': '+ str(parser.__dict__[key]))
+    print("="*20+"\n")
+    return parser
 
 
 def get_tensorflow_device():

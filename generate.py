@@ -171,11 +171,14 @@ def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directo
 
 
 if __name__ == '__main__':
+    tf.get_logger().setLevel('ERROR')
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
     args = utils.get_command_line_args()
     configs.config_values = args
 
     save_dir, complete_model_name = utils.get_savemodel_dir()
-    model, optimizer, step = utils.try_load_model(save_dir, verbose=False)
+    model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
     model_directory = './saved_models/'
@@ -190,7 +193,9 @@ if __name__ == '__main__':
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 
-    n_images = 10
+    n_images = 100
+    sample_and_save(model, sigma_levels, n_images=n_images, save_directory=samples_directory)
+    exit(-1)
     samples = tf.split(sample_many(model, sigma_levels, T=100, n_images=n_images), n_images)
 
     # TODO fix me!
