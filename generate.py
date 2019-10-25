@@ -187,7 +187,7 @@ if __name__ == '__main__':
     model_directory = './saved_models/'
 
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
-                                           tf.math.log(configs.config_values.sigma_high),
+                                           tf.math.log(configs.config_values.sigma_low),
                                            configs.config_values.num_L))
 
     samples_directory = './samples/' + f'{start_time}_{configs.config_values.dataset}' \
