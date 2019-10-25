@@ -12,7 +12,7 @@ from losses.losses import dsm_loss
 # our files
 from model.inception import Metrics
 
-# utils.manage_gpu_memory_usage()
+utils.manage_gpu_memory_usage()
 device = utils.get_tensorflow_device()
 
 
