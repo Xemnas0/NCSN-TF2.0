@@ -33,7 +33,7 @@ def train():
 
     # split data into batches
     train_data = train_data.shuffle(1000).batch(configs.config_values.batch_size).repeat().prefetch(
-        buffer_size=tf.data.experimental.AUTOTUNE)
+        buffer_size=1)
 
     # path for saving the model(s)
     save_dir, complete_model_name = utils.get_savemodel_dir()
@@ -41,8 +41,6 @@ def train():
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
     model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
-
-    metrics = Metrics()
 
     # array of sigma levels
     # generate geometric sequence of values between sigma_low (0.01) and sigma_high (1.0)
