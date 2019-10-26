@@ -139,12 +139,9 @@ class MultiResolutionFusion(layers.Layer):
 
     def call(self, inputs, **kwargs):
         idx_sigmas = inputs[1]
-        if len(inputs[0]) == 1:
-            high_input = inputs[0][0]
-            x = self.norm_high([high_input, idx_sigmas])
-            x = self.conv2d_high(x)
-            return x
-        elif len(inputs[0]) == 2:
+        assert len(inputs[0]) != 1, "Input in MRF of wrong size"
+
+        if len(inputs[0]) == 2:
             high_input, low_input = inputs[0]
 
             low_input = self.norm_low([low_input, idx_sigmas])
@@ -185,7 +182,7 @@ class RefineBlock(layers.Layer):
                 rcu_high = getattr(self, 'rcu_high{}'.format(n))
                 high_input = rcu_high([high_input, idx_sigmas])
 
-            x = self.mrf([[high_input], idx_sigmas])
+            x = high_input
 
         elif len(inputs[0]) == 2:
             high_input, low_input = inputs[0]
