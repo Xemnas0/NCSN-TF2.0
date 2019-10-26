@@ -154,31 +154,34 @@ class MultiResolutionFusion(layers.Layer):
 
 
 class RefineBlock(layers.Layer):
-    def __init__(self, activation, filters, n_blocks_crp=2, n_blocks_rcu=2, kernel_size=3, pooling_size=5):
+    def __init__(self, activation, filters, n_blocks_crp=2, n_blocks_begin_rcu=2, n_blocks_end_rcu=1, kernel_size=3, pooling_size=5):
         super(RefineBlock, self).__init__()
 
         self.activation = activation
         self.filters = filters
         self.kernel_size = kernel_size
 
-        self.n_blocks_rcu = n_blocks_rcu
+        self.n_blocks_begin_rcu = n_blocks_begin_rcu
 
         self.mrf = MultiResolutionFusion(filters, kernel_size)
         self.crp = ConditionalChainedResidualPooling2D(n_blocks_crp, activation, filters, kernel_size, pooling_size)
-        self.rcu_end = RCUBlock(activation, filters, kernel_size)
+        self.n_blocks_end_rcu = n_blocks_end_rcu
 
     def build(self, input_shape):
-        for n in range(self.n_blocks_rcu):
+        for n in range(self.n_blocks_begin_rcu):
             setattr(self, 'rcu_high{}'.format(n), RCUBlock(self.activation, self.filters, self.kernel_size))
             if len(input_shape) == 2:
                 setattr(self, 'rcu_low{}'.format(n), RCUBlock(self.activation, self.filters, self.kernel_size))
+
+        for n in range(self.n_blocks_end_rcu):
+            setattr(self, 'end_rcu{}'.format(n), RCUBlock(self.activation, self.filters, self.kernel_size))
 
     def call(self, inputs, **kwargs):
         idx_sigmas = inputs[1]
         if len(inputs[0]) == 1:
             high_input = inputs[0][0]
 
-            for n in range(self.n_blocks_rcu):
+            for n in range(self.n_blocks_begin_rcu):
                 rcu_high = getattr(self, 'rcu_high{}'.format(n))
                 high_input = rcu_high([high_input, idx_sigmas])
 
@@ -187,7 +190,7 @@ class RefineBlock(layers.Layer):
         elif len(inputs[0]) == 2:
             high_input, low_input = inputs[0]
 
-            for n in range(self.n_blocks_rcu):
+            for n in range(self.n_blocks_begin_rcu):
                 rcu_high = getattr(self, 'rcu_high{}'.format(n))
                 rcu_low = getattr(self, 'rcu_low{}'.format(n))
                 high_input = rcu_high([high_input, idx_sigmas])
@@ -196,5 +199,9 @@ class RefineBlock(layers.Layer):
             x = self.mrf([[high_input, low_input], idx_sigmas])
 
         x = self.crp([x, idx_sigmas])
-        x = self.rcu_end([x, idx_sigmas])
+
+        for n in range(self.n_blocks_end_rcu):
+            end_rcu = getattr(self, 'end_rcu{}'.format(n))
+            x = end_rcu([x, idx_sigmas])
+
         return x

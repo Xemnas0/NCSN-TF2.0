@@ -28,10 +28,11 @@ class RefineNet(keras.Model):
 
         # TODO: THEY DON'T SAY HOW MANY RCU BLOCKS TO USE? WHY DO WE HAVE 2 HERE?
         # TODO: NUMBER OF CRP BLOCKS TAKEN FROM RefineNet.
-        self.refine_block_1 = RefineBlock(activation, filters, n_blocks_crp=2, n_blocks_rcu=2)
-        self.refine_block_2 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_rcu=2)
-        self.refine_block_3 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_rcu=2)
-        self.refine_block_4 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_rcu=2)
+        self.refine_block_1 = RefineBlock(activation, filters, n_blocks_crp=2, n_blocks_begin_rcu=2)
+        self.refine_block_2 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_begin_rcu=2)
+        self.refine_block_3 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_begin_rcu=2)
+        self.refine_block_4 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_begin_rcu=2,
+                                          n_blocks_end_rcu=3)
 
         self.norm = ConditionalInstanceNormalizationPlusPlus2D()
         self.activation = activation  # TODO: This isn't mentioned in the paper.
