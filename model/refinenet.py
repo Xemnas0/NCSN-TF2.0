@@ -11,7 +11,8 @@ class RefineNet(keras.Model):
         super(RefineNet, self).__init__()
         self.in_shape = None
 
-        # self.increase_channels = layers.Conv2D(filters, kernel_size=3, padding='same')  # TODO: (1) not mentioned in the paper. Can we assume it's understood we should have it?
+        self.increase_channels = layers.Conv2D(filters, kernel_size=3,
+                                               padding='same')  # TODO: (1) not mentioned in the paper. Can we assume it's understood we should have it?
 
         # TODO: They never say what the kernel_size is (see RefineNet for this? They are using 1 and 3.)
 
@@ -43,7 +44,7 @@ class RefineNet(keras.Model):
 
     def call(self, inputs, mask=None):
         x, idx_sigmas = inputs
-        # x = self.increase_channels(x)
+        x = self.increase_channels(x)
 
         output_1 = self.preact_1([x, idx_sigmas])
         output_2 = self.preact_2([output_1, idx_sigmas])
