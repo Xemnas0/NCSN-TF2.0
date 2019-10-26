@@ -88,9 +88,14 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
         mu, s = tf.nn.moments(x, axes=[1, 2], keepdims=True)
         m, v = tf.nn.moments(mu, axes=[-1], keepdims=True)
 
-        first = tf.gather(self.gamma, idx_sigmas) * (x - mu) / tf.sqrt(s + 1e-6)
-        second = tf.gather(self.beta, idx_sigmas)
-        third = tf.gather(self.alpha, idx_sigmas) * (mu - m) / tf.sqrt(v + 1e-6)
+        if configs.config_values.baseline:
+            first = self.gamma * (x - mu) / tf.sqrt(s + 1e-6)
+            second = self.beta
+            third = self.alpha * (mu - m) / tf.sqrt(v + 1e-6)
+        else:
+            first = tf.gather(self.gamma, idx_sigmas) * (x - mu) / tf.sqrt(s + 1e-6)
+            second = tf.gather(self.beta, idx_sigmas)
+            third = tf.gather(self.alpha, idx_sigmas) * (mu - m) / tf.sqrt(v + 1e-6)
 
         z = first + second + third
 
