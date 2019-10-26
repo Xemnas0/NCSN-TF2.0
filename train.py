@@ -31,7 +31,7 @@ def train():
     train_data = get_train_test_data(configs.config_values.dataset)[0]
 
     # split data into batches
-    train_data = train_data.shuffle(buffer_size=tf.data.experimental.AUTOTUNE)
+    train_data = train_data.shuffle(buffer_size=10000)
     if configs.config_values.dataset != 'celeb_a':
         train_data = train_data.batch(configs.config_values.batch_size)
     train_data = train_data.repeat()
