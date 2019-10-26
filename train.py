@@ -28,12 +28,14 @@ def train_one_step(model, optimizer, data_batch_perturbed, data_batch, idx_sigma
 
 def train():
     # load dataset from tfds (or use downloaded version if exists)
-    train_data, test_data = get_train_test_data(configs.config_values.dataset)
-    num_examples = int(tf.data.experimental.cardinality(train_data))
+    train_data = get_train_test_data(configs.config_values.dataset)[0]
 
     # split data into batches
-    train_data = train_data.shuffle(1000).batch(configs.config_values.batch_size).repeat().prefetch(
-        buffer_size=1)
+    train_data = train_data.shuffle(1000)
+    if configs.config_values.dataset != 'celeb_a':
+        train_data = train_data.batch(configs.config_values.batch_size)
+    train_data = train_data.repeat()
+    train_data = train_data.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
     # path for saving the model(s)
     save_dir, complete_model_name = utils.get_savemodel_dir()
