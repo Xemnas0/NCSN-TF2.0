@@ -42,8 +42,6 @@ def train():
 
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
-    model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
-
     # array of sigma levels
     # generate geometric sequence of values between sigma_low (0.01) and sigma_high (1.0)
     if configs.config_values.baseline:
@@ -53,6 +51,8 @@ def train():
         sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
                                                tf.math.log(configs.config_values.sigma_low),
                                                configs.config_values.num_L))
+
+    model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
 
     # # Compute inception score mean and standard deviation
     # sample_dir = configs.config_values.samples_dir + start_time + '_' + complete_model_name + '/'
