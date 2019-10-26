@@ -107,6 +107,8 @@ def train():
 
 
 if __name__ == "__main__":
+    tf.random.set_seed(2019)
+
     tf.get_logger().setLevel('ERROR')
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 

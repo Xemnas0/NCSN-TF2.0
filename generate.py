@@ -174,6 +174,8 @@ def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directo
 
 
 if __name__ == '__main__':
+    tf.random.set_seed(2019)
+
     tf.get_logger().setLevel('ERROR')
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
