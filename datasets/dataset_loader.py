@@ -4,6 +4,7 @@ import configs
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
 
+
 def load_data(dataset_name):
     # load data from tfds
     data_generators = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", shuffle_files=False)
@@ -13,12 +14,8 @@ def load_data(dataset_name):
 
 
 def preprocess(dataset_name, data, train=True):
-    if dataset_name == 'celeb_a':
-        # for CelebA, take a 140x140 centre crop of the image and resize to 32x32
-        data = data.map(lambda x: tf.image.resize_with_crop_or_pad(x, 140, 140), num_parallel_calls=AUTOTUNE)
-        data = data.map(lambda x: tf.image.resize(x, (32, 32)), num_parallel_calls=AUTOTUNE)
     data = data.map(lambda x: x / 255, num_parallel_calls=AUTOTUNE)  # rescale [0,255] -> [0,1]
-    if train and dataset_name in ["cifar10", "celeb_a"]:
+    if train and dataset_name in ["cifar10"]:
         data = data.map(lambda x: tf.image.random_flip_left_right(x),
                         num_parallel_calls=AUTOTUNE)  # randomly flip along the vertical axis
 
@@ -35,9 +32,11 @@ def _preprocess_celeb_a(data):
     # Rescale
     data = data.map(lambda x: x / 255, num_parallel_calls=AUTOTUNE)
     # Maybe cache in memory
-    # data = data.cache()
-
+    data = data.cache()
+    # Randomly flip
+    data = data.map(lambda x: tf.image.random_flip_left_right(x), num_parallel_calls=AUTOTUNE)
     return data
+
 
 def get_celeb_a():
     batch_size = configs.config_values.batch_size
