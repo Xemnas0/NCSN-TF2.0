@@ -33,7 +33,7 @@ class RefineNet(keras.Model):
         self.refine_block_4 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_rcu=2)
 
         self.norm = ConditionalInstanceNormalizationPlusPlus2D()
-        # self.activation = activation  # TODO: This isn't mentioned in the paper.
+        self.activation = activation  # TODO: This isn't mentioned in the paper.
         self.decrease_channels = None  # TODO: Neither is this, see (1).
 
     def build(self, input_shape):
@@ -56,7 +56,7 @@ class RefineNet(keras.Model):
         output_1 = self.refine_block_1([[output_1, output_2], idx_sigmas])
 
         output = self.norm([output_1, idx_sigmas])
-        # output = self.activation(output)
+        output = self.activation(output)
         output = self.decrease_channels(output)
 
         return output
