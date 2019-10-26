@@ -102,7 +102,6 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
         for n in range(n_blocks):
             setattr(self, 'norm1{}'.format(n), ConditionalInstanceNormalizationPlusPlus2D())
             setattr(self, 'conv{}'.format(n), layers.Conv2D(filters, kernel_size, padding='same'))
-            setattr(self, 'norm2{}'.format(n), ConditionalInstanceNormalizationPlusPlus2D())
 
     # TODO: WHERE IS ACTIVATION? NORM COMES BEFORE EVERY CONV AND POOLING?
     def call(self, inputs, **kwargs):
@@ -112,11 +111,9 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
         for n in range(self.n_blocks):
             norm1 = getattr(self, 'norm1{}'.format(n))
             conv = getattr(self, 'conv{}'.format(n))
-            norm2 = getattr(self, 'norm2{}'.format(n))
 
             x = norm1([x, idx_sigmas])
             x = tf.nn.avg_pool2d(x, self.pooling_size, strides=1, padding='SAME')
-            x = norm2([x, idx_sigmas])
             x = conv(x)
             x_residual += x
         return x_residual
