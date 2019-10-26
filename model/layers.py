@@ -32,9 +32,14 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         self.pooling = pooling
         self.activation = activation
 
-        self.increase_channels_skip = layers.Conv2D(filters, kernel_size=1, padding='valid')
+        self.increase_channels_skip = None
 
         self.filters = filters
+
+    def build(self, input_shape):
+        begin_filters = input_shape[0][-1]
+        if begin_filters != self.filters:
+            self.increase_channels_skip = layers.Conv2D(self.filters, kernel_size=1, padding='valid')
 
     def call(self, inputs, **kwargs):
         skip_x, idx_sigmas = inputs
@@ -45,7 +50,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         x = self.activation(x)
         x = self.conv2(x)
 
-        if x.shape != skip_x.shape:
+        if self.increase_channels_skip is not None:
             skip_x = self.increase_channels_skip(skip_x)  # TODO: this should be performed before each pooling as well
 
         if self.pooling:
