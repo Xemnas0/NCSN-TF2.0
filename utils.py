@@ -48,8 +48,8 @@ def get_command_line_args():
                         help="folder for saving model checkpoints (default: ./saved_models/)")
     parser.add_argument('--checkpoint_freq', default=5000, type=int,
                         help="how often to save a model checkpoint (default: 5000 iterations)")
-    parser.add_argument('--resume', action='store_true',
-                        help="whether to resume from latest checkpoint (default: False)")
+    parser.add_argument('--resume', action='store_false',
+                        help="whether to resume from latest checkpoint (default: True)")
     parser.add_argument('--find_nearest', action='store_true',
                         help="whether to find closest k neighbours in training set (default: False)")
     parser.add_argument('--k', default=10, type=int,
