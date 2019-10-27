@@ -31,7 +31,6 @@ import urllib
 import warnings
 
 import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
 
 
 class InvalidFIDException(Exception):
@@ -327,6 +326,7 @@ def calculate_fid_given_paths(paths, inception_path, low_profile=False):
         return fid_value
 
 def main(path1, path2, gpu="GPU:0", inception_model_path=None, low_profile=False):
+    tf.disable_v2_behavior()
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu
     fid_value = calculate_fid_given_paths([path1, path2], inception_model_path, low_profile=low_profile)
     return fid_value
