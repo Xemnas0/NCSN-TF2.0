@@ -3,6 +3,7 @@ import os
 import tensorflow as tf
 
 import configs
+import evaluation
 import generate
 import inpainting
 import toytrain
@@ -15,7 +16,8 @@ EXPERIMENTS = {
     "train": train.main,
     "generate": generate.main,
     "inpainting": inpainting.main,
-    "toytrain": toytrain.main
+    "toytrain": toytrain.main,
+    "evaluation": evaluation.main
 }
 
 if __name__ == '__main__':
