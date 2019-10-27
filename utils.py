@@ -97,12 +97,13 @@ def get_savemodel_dir():
     return folder_name, complete_model_name
 
 
-def print_model_summary(model):
-    batch = 2
+def evaluate_print_model_summary(model, verbose=True):
+    batch = 1
     input_shape = (batch,) + get_dataset_image_size(configs.config_values.dataset)
     x = [tf.ones(shape=input_shape), tf.ones(batch, dtype=tf.int32)]
     model(x)
-    print(model.summary())
+    if verbose:
+        print(model.summary())
 
 
 def try_load_model(save_dir, step_ckpt=-1, return_new_model=True, verbose=True):
@@ -150,8 +151,7 @@ def try_load_model(save_dir, step_ckpt=-1, return_new_model=True, verbose=True):
             step = int(step)
             print("Loaded model: " + checkpoint)
 
-    if verbose:
-        print_model_summary(model)
+    evaluate_print_model_summary(model, verbose)
 
     return model, optimizer, step
 
