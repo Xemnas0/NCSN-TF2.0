@@ -1,10 +1,7 @@
 import csv
 
-from model.modelresnet import  ModelResNet
-from model.refinenet import RefineNet
+from model.resnet import ToyResNet
 import tensorflow as tf
-import tensorflow_datasets as tfds
-import numpy as np
 import utils, os
 from tqdm import tqdm
 from datetime import datetime
@@ -13,32 +10,6 @@ from datetime import datetime
 from datasets.dataset_loader import get_train_test_data
 from losses.losses import ssm_loss, dsm_loss
 import configs
-from generate import plot_grayscale
-
-def print_model_summary(model):
-    batch = 2
-    if configs.config_values.dataset in ["cifar10", "celeb_a"]:
-        x = [tf.ones(shape=(batch, 32, 32, 3)), tf.ones(batch, dtype=tf.int32)]
-    elif configs.config_values.dataset in ["mnist"]:
-        x = [tf.ones(shape=(batch, 28, 28, 1)), tf.ones(batch, dtype=tf.int32)]
-    else:
-        raise Exception('Provided dataset is neither of mnist, cifar10 or celeb_a.')
-
-    out = model(x)
-    print(model.summary())
-
-def manage_gpu_memory_usage():
-    gpus = tf.config.experimental.list_physical_devices('GPU')
-    if gpus:
-        try:
-            # Currently, memory growth needs to be the same across GPUs
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
-            logical_gpus = tf.config.experimental.list_logical_devices('GPU')
-            print(len(gpus), "Physical GPUs,", len(logical_gpus), "Logical GPUs")
-        except RuntimeError as e:
-            # Memory growth must be set before GPUs have been initialized
-            print(e)
 
 
 @tf.function
@@ -79,8 +50,8 @@ def train():
     summary_writer = tf.summary.create_file_writer(log_dir + start_time)
 
     # initialize model
-    model = ModelResNet(activation=tf.nn.elu)
-    # print_model_summary(model)
+    model = ToyResNet(activation=tf.nn.elu)
+    # utils.print_model_summary(model)
     # declare optimizer
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)  # NOTE 10 times larger than in their paper
 
@@ -139,11 +110,13 @@ def train():
 
 
 if __name__ == "__main__":
+    tf.random.set_seed(2019)
+
     tf.get_logger().setLevel('ERROR')
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
     args = utils.get_command_line_args()
     configs.config_values = args
 
-    manage_gpu_memory_usage()
+    utils.manage_gpu_memory_usage()
     train()
