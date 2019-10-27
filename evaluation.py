@@ -4,11 +4,17 @@ This selection is based on a small FID score computed with 1000 images.
 TODO: decide whether to use training set or test set.
 
 """
+import os
+
 import tensorflow as tf
 
 import configs
 import utils
 from generate import sample_many_and_save
+import fid
+stat_files = {
+    "cifar10": "./statistics/fid_stats_cifar10_train.npz"
+}
 
 
 def main():
@@ -23,6 +29,8 @@ def main():
                                            tf.math.log(configs.config_values.sigma_low),
                                            configs.config_values.num_L))
 
+    filename_stats_dataset = stat_files[configs.config_values.dataset]
+
     while True:
         step_ckpt = i * multiple
 
@@ -33,16 +41,21 @@ def main():
         if model is None:
             break
 
-        sample_many_and_save(model, sigma_levels,
-                             save_directory='{}/{}_step{}/samples/'.format(dir_statistics, complete_model_name,
-                                                                           step_ckpt), n_images=batch_FID)
+        save_directory = '{}/{}_step{}/samples/'.format(dir_statistics, complete_model_name, step_ckpt)
 
-        # samples = sample_many(model, sigma_levels, n_images=n_images_FID)
+        sample_many_and_save(model, sigma_levels, save_directory=save_directory, n_images=batch_FID)
+
+        fid_score = fid.main(save_directory, filename_stats_dataset)
+
+        print("Steps {}, FID {}", step_ckpt, fid_score)
 
         # is_mean, is_stddev = metric.compute_inception_score(samples)
         # print("Inception score: {:.2}+-{:.2}".format(is_mean, is_stddev))
         #
         # mu, sigma = metric.compute_mu_sigma(samples)
         # np.savez(partial_filename)
+
+        # returned = os.system('python3 fid.py {} {} --gpu GPU:0'.format(save_directory, filename_stats_dataset))
+        # print(returned)
 
         i += 1

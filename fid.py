@@ -23,12 +23,15 @@ from __future__ import absolute_import, division, print_function
 import numpy as np
 import os
 import gzip, pickle
-import tensorflow as tf
-from scipy.misc import imread
+# import tensorflow as tf
+from imageio import imread
 from scipy import linalg
 import pathlib
 import urllib
 import warnings
+
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
 
 
 class InvalidFIDException(Exception):
@@ -38,8 +41,8 @@ class InvalidFIDException(Exception):
 def create_inception_graph(pth):
     """Creates a graph from saved GraphDef file."""
     # Creates graph from saved graph_def.pb.
-    with tf.io.gfile.FastGFile(pth, 'rb') as f:
-        graph_def = tf.compat.v1.GraphDef()
+    with tf.gfile.FastGFile(pth, 'rb') as f:
+        graph_def = tf.GraphDef()
         graph_def.ParseFromString(f.read())
         _ = tf.import_graph_def(graph_def, name='FID_Inception_Net')
 
@@ -323,6 +326,10 @@ def calculate_fid_given_paths(paths, inception_path, low_profile=False):
         fid_value = calculate_frechet_distance(m1, s1, m2, s2)
         return fid_value
 
+def main(path1, path2, gpu="GPU:0", inception_model_path=None, low_profile=False):
+    os.environ['CUDA_VISIBLE_DEVICES'] = gpu
+    fid_value = calculate_fid_given_paths([path1, path2], inception_model_path, low_profile=low_profile)
+    return fid_value
 
 if __name__ == "__main__":
     from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
