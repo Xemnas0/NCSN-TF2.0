@@ -1,15 +1,15 @@
 import csv
-
-from model.resnet import ToyResNet
-import tensorflow as tf
-import utils, os
-from tqdm import tqdm
 from datetime import datetime
 
+import tensorflow as tf
+from tqdm import tqdm
+
+import configs
+import utils
 # our files
 from datasets.dataset_loader import get_train_test_data
-from losses.losses import ssm_loss, dsm_loss
-import configs
+from losses.losses import ssm_loss
+from model.resnet import ToyResNet
 
 
 @tf.function
@@ -21,7 +21,7 @@ def train_one_step(model, data_batch, optimizer):
     return current_loss
 
 
-def train():
+def main():
     device = utils.get_tensorflow_device()
 
     perturbed = False
@@ -46,7 +46,7 @@ def train():
     # os.makedirs(save_dir)
 
     start_time = datetime.now().strftime("%y%m%d-%H%M")
-    log_dir = configs.config_values.log_dir + configs.config_values.dataset + 'toy1' +"/"
+    log_dir = configs.config_values.log_dir + configs.config_values.dataset + 'toy1' + "/"
     summary_writer = tf.summary.create_file_writer(log_dir + start_time)
 
     # initialize model
@@ -107,16 +107,3 @@ def train():
                 return
 
     # NOTE bad way to choose the best model - saving all checkpoints and then testing after
-
-
-if __name__ == "__main__":
-    tf.random.set_seed(2019)
-
-    tf.get_logger().setLevel('ERROR')
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-    args = utils.get_command_line_args()
-    configs.config_values = args
-
-    utils.manage_gpu_memory_usage()
-    train()

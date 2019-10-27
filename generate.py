@@ -11,8 +11,6 @@ import configs
 import utils
 from datasets.dataset_loader import get_data_k_nearest
 
-utils.manage_gpu_memory_usage()
-
 
 def clamped(x):
     return tf.clip_by_value(x, 0, 1.0)
@@ -38,6 +36,9 @@ def save_as_grid(images, filename, spacing=2):
     n_images, height, width, channels = images.shape
     rows = np.floor(np.sqrt(n_images)).astype(int)
     cols = n_images // rows
+
+    # Process image
+    images = _preprocess_image_to_save(images)
 
     # Init image
     grid_cols = rows * height + (rows + 1) * spacing
@@ -97,6 +98,8 @@ def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
                 x_processed = batch
 
         n_processed_images += batch_size
+
+    x_processed = _preprocess_image_to_save(x_processed)
 
     return x_processed
 
@@ -173,27 +176,43 @@ def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directo
     return x
 
 
-if __name__ == '__main__':
-    tf.random.set_seed(2019)
+def sample_and_save_intermediate(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directory=None):
+    """
+    :param model:
+    :param sigmas:
+    :param eps:
+    :param T:
+    :return:
+    """
+    if not os.path.exists(save_directory):
+        os.makedirs(save_directory)
 
-    tf.get_logger().setLevel('ERROR')
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+    image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
 
-    args = utils.get_command_line_args()
-    configs.config_values = args
+    x = tf.random.uniform(shape=image_size)
 
+    for i, sigma_i in enumerate(tqdm(sigmas, desc='Sampling for each sigma')):
+        alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
+        idx_sigmas = tf.ones(n_images, dtype=tf.int32) * i
+        for t in range(T):
+            x = sample_one_step(model, x, idx_sigmas, alpha_i)
+
+            if (t + 1) % 10 == 0:
+                save_as_grid(x, save_directory + f'sigma{i + 1}_t{t + 1}.png')
+    return x
+
+
+def main():
     save_dir, complete_model_name = utils.get_savemodel_dir()
     model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
-
-    model_directory = './saved_models/'
 
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
                                            tf.math.log(configs.config_values.sigma_low),
                                            configs.config_values.num_L))
 
     samples_directory = './samples/' + f'{start_time}_{configs.config_values.dataset}' \
-                                       f'_{step}steps_{configs.config_values.filters}filters' + "/"
+        f'_{step}steps_{configs.config_values.filters}filters' + "/"
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 
@@ -210,5 +229,5 @@ if __name__ == '__main__':
             for j, img in enumerate(k_closest_images):
                 save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
     else:
-        n_images = 100
+        n_images = 400
         sample_and_save(model, sigma_levels, n_images=n_images, save_directory=samples_directory)

@@ -91,19 +91,10 @@ def inpaint_x(model, sigmas, m, x, eps=2 * 1e-5, T=100):
     return x_t
 
 
-if __name__ == '__main__':
-    tf.random.set_seed(2019)
-
-    tf.get_logger().setLevel('ERROR')
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-    args = utils.get_command_line_args()
-    configs.config_values = args
-
+def main():
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
     # construct path and folder
-    checkpoint_dir = configs.config_values.checkpoint_dir
     dataset = configs.config_values.dataset
     samples_directory = f'./inpainting_results/{dataset}_{start_time}'
     if not os.path.exists(samples_directory):

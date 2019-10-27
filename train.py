@@ -1,5 +1,4 @@
 import csv
-import os
 from datetime import datetime
 
 import tensorflow as tf
@@ -9,11 +8,6 @@ import configs
 import utils
 from datasets.dataset_loader import get_train_test_data
 from losses.losses import dsm_loss
-# our files
-from model.inception import Metrics
-
-utils.manage_gpu_memory_usage()
-device = utils.get_tensorflow_device()
 
 
 @tf.function
@@ -26,7 +20,9 @@ def train_one_step(model, optimizer, data_batch_perturbed, data_batch, idx_sigma
     return current_loss
 
 
-def train():
+def main():
+    tf.random.set_seed(2019)
+
     # load dataset from tfds (or use downloaded version if exists)
     train_data = get_train_test_data(configs.config_values.dataset)[0]
 
@@ -99,20 +95,9 @@ def train():
                 with open(save_dir + 'loss_history.csv', mode='a', newline='') as csv_file:
                     writer = csv.writer(csv_file, delimiter=';')
                     writer.writerows(loss_history)
-                print("\nSaved checkpoint. Average loss: {:.3f}".format(avg_loss / configs.config_values.checkpoint_freq))
+                print(
+                    "\nSaved checkpoint. Average loss: {:.3f}".format(avg_loss / configs.config_values.checkpoint_freq))
                 loss_history = []
                 avg_loss = 0
             if step == total_steps:
                 return
-
-
-if __name__ == "__main__":
-    tf.random.set_seed(2019)
-
-    tf.get_logger().setLevel('ERROR')
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
-    args = utils.get_command_line_args()
-    configs.config_values = args
-
-    train()

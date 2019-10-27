@@ -28,6 +28,7 @@ def get_dataset_image_size(dataset_name):
 
 def get_command_line_args():
     parser = argparse.ArgumentParser(description='I AM A HELP MESSAGE')
+    parser.add_argument('--experiment', default='train', help="what experiment to run (default: train)")
     parser.add_argument('--dataset', default='mnist',
                         help="tfds name of dataset (default: 'mnist')")
     parser.add_argument('--baseline', action='store_true',
