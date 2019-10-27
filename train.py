@@ -52,7 +52,7 @@ def train():
                                                tf.math.log(configs.config_values.sigma_low),
                                                configs.config_values.num_L))
 
-    model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
+    model, optimizer, step = utils.try_load_model(save_dir, step_ckpt=configs.config_values.resume_from, verbose=True)
 
     # # Compute inception score mean and standard deviation
     # sample_dir = configs.config_values.samples_dir + start_time + '_' + complete_model_name + '/'
