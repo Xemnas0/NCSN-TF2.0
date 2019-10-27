@@ -5,18 +5,14 @@ TODO: decide whether to use training set or test set.
 
 """
 import tensorflow as tf
+
 import configs
-
 import utils
-from generate import sample_many, sample_many_and_save
-from model.inception import Metrics
-import numpy as np
+from generate import sample_many_and_save
 
-if __name__ == '__main__':
-    args = utils.get_command_line_args()
-    configs.config_values = args
-    metric = Metrics()
-    n_images_FID = 1000
+
+def main():
+    batch_FID = 1000
     multiple = 5000
     i = 20
 
@@ -37,16 +33,16 @@ if __name__ == '__main__':
         if model is None:
             break
 
-        partial_filename = '{}/{}_step{}'.format(dir_statistics, complete_model_name, step_ckpt)
         sample_many_and_save(model, sigma_levels,
                              save_directory='{}/{}_step{}/samples/'.format(dir_statistics, complete_model_name,
-                                                                           step_ckpt))
-        samples = sample_many(model, sigma_levels, n_images=n_images_FID)
+                                                                           step_ckpt), n_images=batch_FID)
 
+        # samples = sample_many(model, sigma_levels, n_images=n_images_FID)
 
         # is_mean, is_stddev = metric.compute_inception_score(samples)
         # print("Inception score: {:.2}+-{:.2}".format(is_mean, is_stddev))
         #
         # mu, sigma = metric.compute_mu_sigma(samples)
         # np.savez(partial_filename)
-        # i += 1
+
+        i += 1
