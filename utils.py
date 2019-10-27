@@ -3,6 +3,9 @@ import tensorflow as tf
 import numpy as np
 from model.refinenet import RefineNet
 import configs
+from os import listdir
+from os.path import isfile, join
+import re
 
 dict_datasets_image_size = {
     'mnist': (28, 28, 1),
@@ -50,6 +53,8 @@ def get_command_line_args():
                         help="how often to save a model checkpoint (default: 5000 iterations)")
     parser.add_argument('--resume', action='store_false',
                         help="whether to resume from latest checkpoint (default: True)")
+    parser.add_argument('--resume_from', default=-1, type=int,
+                        help='Step of checkpoint where to resume the model from. (default: latest one)')
     parser.add_argument('--find_nearest', action='store_true',
                         help="whether to find closest k neighbours in training set (default: False)")
     parser.add_argument('--k', default=10, type=int,
@@ -91,10 +96,11 @@ def print_model_summary(model):
     print(model.summary())
 
 
-def try_load_model(save_dir, verbose=True):
+def try_load_model(save_dir, step_ckpt=-1, return_new_model=True, verbose=True):
     """
     Tries to load a model from the provided directory, otherwise returns a new initialized model.
     :param save_dir: directory with checkpoints
+    :param step_ckpt: step of checkpoint where to resume the model from
     :param verbose: true for printing the model summary
     :return:
     """
@@ -105,16 +111,32 @@ def try_load_model(save_dir, verbose=True):
 
     # if resuming training, overwrite model parameters from checkpoint
     if configs.config_values.resume:
-        print("Trying to load a model from " + save_dir)
-        latest_checkpoint = tf.train.latest_checkpoint(save_dir)
-        if latest_checkpoint is None:
-            print("No model found. Using a new model")
+        if step_ckpt == -1:
+            print("Trying to load latest model from " + save_dir)
+            checkpoint = tf.train.latest_checkpoint(save_dir)
         else:
-            print("Loaded model: " + latest_checkpoint)
+            print("Trying to load checkpoint with step", step_ckpt,  " model from " + save_dir)
+            onlyfiles = [f for f in listdir(save_dir) if isfile(join(save_dir, f))]
+            r = re.compile(".*step_{}-.*".format(step_ckpt))
+            name_all_checkpoints = list(filter(r.match, onlyfiles))
+            # Retrieve name of the last checkpoint with that number of steps
+            name_ckpt = name_all_checkpoints[-1][:-6]
+            checkpoint = save_dir+name_ckpt
+        if checkpoint is None:
+            print("No model found.")
+            if return_new_model:
+                print("Using a new model")
+            else:
+                print("Returning None")
+                model = None
+                optimizer = None
+                step = None
+        else:
             step = tf.Variable(0)
             ckpt = tf.train.Checkpoint(step=step, optimizer=optimizer, model=model)
-            ckpt.restore(latest_checkpoint)
+            ckpt.restore(checkpoint)
             step = int(step)
+            print("Loaded model: " + checkpoint)
 
     if verbose:
         print_model_summary(model)
