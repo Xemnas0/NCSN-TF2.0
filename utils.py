@@ -2,6 +2,7 @@ import argparse
 import tensorflow as tf
 import numpy as np
 from model.refinenet import RefineNet
+from model.resnet import ResNet
 import configs
 from os import listdir
 from os.path import isfile, join
@@ -59,6 +60,8 @@ def get_command_line_args():
                         help="whether to find closest k neighbours in training set (default: False)")
     parser.add_argument('--k', default=10, type=int,
                         help='number of nearest neighbours to find from data (default: 10)')
+    parser.add_argument('--resnet', action='store_true',
+                        help='whether to run the experiment with ResNet architecture (default: False)')
 
     parser = parser.parse_args()
     print("=" * 20 + "\nParameters: \n")
@@ -76,7 +79,12 @@ def get_tensorflow_device():
 
 def get_savemodel_dir():
     models_dir = configs.config_values.checkpoint_dir
-    model_name = 'baseline' if configs.config_values.baseline else 'refinenet'
+    if configs.config_values.baseline:
+        model_name = 'baseline'
+    elif configs.config_values.resnet:
+        model_name = 'resnet'
+    else:
+        model_name = 'refinenet'
 
     # Folder name: model_name+filters+dataset+L
     if not configs.config_values.baseline:
@@ -105,7 +113,10 @@ def try_load_model(save_dir, step_ckpt=-1, return_new_model=True, verbose=True):
     :return:
     """
     # initialize return values
-    model = RefineNet(filters=configs.config_values.filters, activation=tf.nn.elu)
+    if configs.config_values.resnet:
+        model = ResNet(filters=configs.config_values.filters, activation=tf.nn.elu)
+    else:
+        model = RefineNet(filters=configs.config_values.filters, activation=tf.nn.elu)
     optimizer = tf.keras.optimizers.Adam(learning_rate=configs.config_values.learning_rate)
     step = 0
 
