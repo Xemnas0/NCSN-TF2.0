@@ -8,6 +8,8 @@ from scipy.stats import entropy
 from tqdm import tqdm
 from scipy import linalg
 
+SIZE_ACTIVATION = 2048
+
 
 class Metrics:
     def __init__(self):
@@ -18,6 +20,22 @@ class Metrics:
     def compute_inception_score(self, images, n_splits=10, batch_size=128, image_side_inception=299):
         is_mean, is_stddev = _compute_inception_score(self.model, images, n_splits, batch_size, image_side_inception)
         return is_mean, is_stddev
+
+    def _compute_activations(self, images, batch_size=128, image_side_inception=299):
+        input_size = tf.convert_to_tensor([image_side_inception, image_side_inception])
+        data = _preprocess_dataset_inception(input_size, images=images, batch_size=batch_size)
+
+        activations = np.zeros((images.shape[0], SIZE_ACTIVATION))
+        for i, batch in enumerate(
+                tqdm(data, total=tf.data.experimental.cardinality(data).numpy(), desc='Computing activations')):
+            i_batch_size = batch.get_shape()[0]
+            activations[i * batch_size:i * batch_size + i_batch_size] = _inception_one_step(self.model_act, batch)
+        return activations
+
+    def compute_mu_sigma(self, images, batch_size=128, image_side_inception=299):
+        activations = self._compute_activations(images, batch_size, image_side_inception)
+        mean, sigma = np.mean(activations, axis=0), np.conv(activations, rowvar=False)
+        return mean, sigma
 
     def compute_fid(self, images_1=None, data_1=None, images_2=None, data_2=None, batch_size=128,
                     image_side_inception=299, eps=1e-7):
@@ -51,7 +69,7 @@ class Metrics:
         # Calculate sum squared difference between means
         ssdif = tf.reduce_sum(tf.square(mean_1 - mean_2))
         # Compute covariance
-        cov_mean = linalg.sqrtm((sigma_1+eps).dot(sigma_2+eps))
+        cov_mean = linalg.sqrtm((sigma_1 + eps).dot(sigma_2 + eps))
         # cov_mean = tf.linalg.sqrtm(tf.linalg.matmul(sigma_1+eps, sigma_2+eps))
         # if cov_mean.dtype in [tf.complex, tf.complex64, tf.complex128]:
         #     print(f"Cov mean is of type ", cov_mean.dtype)
