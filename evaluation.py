@@ -37,7 +37,7 @@ def main():
     # Remove csv if it already exists
     if os.path.exists(csv_filename):
         os.remove(csv_filename)
-        
+
     while step_ckpt <= configs.config_values.steps:
         i += 1
         step_ckpt = i * multiple
@@ -53,7 +53,7 @@ def main():
             if model is None:
                 break
 
-            print("Generating samples...")
+            print("Generating samples in ", save_directory)
             sample_many_and_save(model, sigma_levels, save_directory=save_directory, n_images=batch_FID)
         elif configs.config_values.eval_setting == 'fid':
             # Check if directory exists
