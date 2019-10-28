@@ -10,9 +10,10 @@ import os
 import tensorflow as tf
 
 import configs
+import fid
 import utils
 from generate import sample_many_and_save
-import fid
+
 stat_files = {
     "cifar10": "./statistics/fid_stats_cifar10_train.npz"
 }
@@ -21,7 +22,7 @@ stat_files = {
 def main():
     batch_FID = 1000
     multiple = 10000
-    i = 1
+    i = step_ckpt = 0
 
     dir_statistics = './statistics'
     save_dir, complete_model_name = utils.get_savemodel_dir()
@@ -32,7 +33,13 @@ def main():
 
     filename_stats_dataset = stat_files[configs.config_values.dataset]
 
-    while True:
+    csv_filename = '{}/{}/'.format(dir_statistics, complete_model_name) + 'all_FIDs.csv'
+    # Remove csv if it already exists
+    if os.path.exists(csv_filename):
+        os.remove(csv_filename)
+        
+    while step_ckpt <= configs.config_values.steps:
+        i += 1
         step_ckpt = i * multiple
 
         print("\n" + "=" * 30, "\nStep {}".format(step_ckpt))
@@ -49,16 +56,24 @@ def main():
             print("Generating samples...")
             sample_many_and_save(model, sigma_levels, save_directory=save_directory, n_images=batch_FID)
         elif configs.config_values.eval_setting == 'fid':
-            print("Computing FID...")
-            # fid_score = os.system('python fid.py {} {} --gpu GPU:0'.format(save_directory, filename_stats_dataset))
+            # Check if directory exists
             if not os.path.exists(save_directory):
                 print("Sample directory ", save_directory, " not found")
                 continue
+            # Check if it's empty, and if it is, delete it
+            if not len(os.listdir(save_directory)):
+                print("Found empty ", save_directory, ". Deleting it...")
+                os.rmdir(save_directory)
+                continue
+
+            print("Computing FID...")
+
             fid_score = fid.main(save_directory, filename_stats_dataset)
 
             print("Steps {}, FID {}".format(step_ckpt, fid_score))
 
-            with open('{}/{}/'.format(dir_statistics, complete_model_name) + 'all_FIDs.csv', mode='a', newline='') as csv_file:
+            with open(csv_filename, mode='a',
+                      newline='') as csv_file:
                 writer = csv.writer(csv_file, delimiter=';')
                 writer.writerow([step_ckpt, fid_score])
 
@@ -70,5 +85,3 @@ def main():
 
         # returned = os.system('python3 fid.py {} {} --gpu GPU:0'.format(save_directory, filename_stats_dataset))
         # print(returned)
-
-        i += 1
