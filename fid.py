@@ -329,6 +329,7 @@ def main(path1, path2, gpu="GPU:0", inception_model_path=None, low_profile=False
     tf.disable_v2_behavior()
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu
     fid_value = calculate_fid_given_paths([path1, path2], inception_model_path, low_profile=low_profile)
+    tf.enable_v2_behavior()
     return fid_value
 
 if __name__ == "__main__":
