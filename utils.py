@@ -114,6 +114,10 @@ def try_load_model(save_dir, step_ckpt=-1, return_new_model=True, verbose=True):
     :param verbose: true for printing the model summary
     :return:
     """
+
+    if configs.config_values.baseline:
+        configs.config_values.num_L = 1
+
     # initialize return values
     if configs.config_values.resnet:
         model = ResNet(filters=configs.config_values.filters, activation=tf.nn.elu)

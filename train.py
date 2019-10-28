@@ -43,7 +43,6 @@ def main():
     # generate geometric sequence of values between sigma_low (0.01) and sigma_high (1.0)
     if configs.config_values.baseline:
         sigma_levels = tf.ones(1) * configs.config_values.sigma_low
-        configs.config_values.num_L = 1
     else:
         sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
                                                tf.math.log(configs.config_values.sigma_low),

@@ -69,6 +69,6 @@ def get_data_inpainting(dataset_name, n):
 def get_data_k_nearest(dataset_name):
     data_generator = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", split='train', shuffle_files=False)
     data = tf.data.Dataset.from_tensor_slices(data_generator['image'])
-    data = preprocess(dataset_name, data, train=True)
+    data = data.map(lambda x: tf.cast(x, dtype=tf.float32))
 
     return data
