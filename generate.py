@@ -61,7 +61,7 @@ def save_as_grid_closest_k(images, filename, spacing=2):
     Partially from https://stackoverflow.com/questions/42040747/more-idiomatic-way-to-display-images-in-a-grid-with-numpy
     """
     # images is of shape [ [ sample, [ closest, closest, ... ] ], [ sample, [ closest, closest, ... ] ]
-    _, height, width, channels = images[1].shape
+    _, height, width, channels = images[0][0].shape
     rows = len(images)
     cols = len(images[0][1]) + 1
 
