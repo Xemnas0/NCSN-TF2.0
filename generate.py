@@ -265,7 +265,7 @@ def main():
                 # save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
 
             images.append([sample, k_closest_images])
-        save_as_grid_closest_k(images, "k_closest_grid.png")
+        save_as_grid_closest_k(images, samples_directory+"k_closest_grid.png", spacing=4)
     else:
         n_images = 400
         sample_and_save(model, sigma_levels, n_images=n_images, save_directory=samples_directory)
