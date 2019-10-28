@@ -55,6 +55,39 @@ def save_as_grid(images, filename, spacing=2):
 
     im.save(filename, format="PNG")
 
+
+def save_as_grid_closest_k(images, filename, spacing=2):
+    """
+    Partially from https://stackoverflow.com/questions/42040747/more-idiomatic-way-to-display-images-in-a-grid-with-numpy
+    """
+    # images is of shape [ [ sample, [ closest, closest, ... ] ], [ sample, [ closest, closest, ... ] ]
+    _, height, width, channels = images[1].shape
+    rows = len(images)
+    cols = len(images[0][1]) + 1
+
+    # init image
+    image_height = rows * height + (rows + 1) * spacing
+    image_width = cols * width + (cols + 1) * spacing + spacing  # double spacing between samples and x/occluded_x
+    mode = 'L' if channels == 1 else "RGB"
+    im = Image.new(mode, (image_width, image_height), color='white')
+
+    for i in range(rows):  # i = row, j = column
+        sample, closest = images[i]
+
+        # plot the sample
+        row_start = i * height + (1 + i) * spacing
+        col_start = spacing
+
+        im.paste(tf.keras.preprocessing.image.array_to_img(sample[0, :, :, :]), (col_start, row_start))
+
+        # plot the closest images from training set
+        for j in range(len(closest)):
+            col_start = (j + 1) * width + (j + 2) * spacing + spacing
+            im.paste(tf.keras.preprocessing.image.array_to_img(closest[j][0, :, :, :]), (col_start, row_start))
+
+    im.save(filename, format="PNG")
+
+
 @tf.function
 def sample_one_step(model, x, idx_sigmas, alpha_i):
     z_t = tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)  # TODO: check if stddev is correct
@@ -224,11 +257,15 @@ def main():
         data_as_array = data_as_array.batch(int(tf.data.experimental.cardinality(data_as_array)))
         data_as_array = tf.data.experimental.get_single_element(data_as_array)
 
+        images = []
         for i, sample in enumerate(samples):
-            save_image(sample[0, :, :, 0], samples_directory + f'sample_{i}')
+            # save_image(sample[0, :, :, 0], samples_directory + f'sample_{i}')
             k_closest_images = utils.find_k_closest(sample, configs.config_values.k, data_as_array)
-            for j, img in enumerate(k_closest_images):
-                save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
+            # for j, img in enumerate(k_closest_images):
+                # save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
+
+            images.append([sample, k_closest_images])
+        save_as_grid_closest_k(images, "k_closest_grid.png")
     else:
         n_images = 400
         sample_and_save(model, sigma_levels, n_images=n_images, save_directory=samples_directory)
