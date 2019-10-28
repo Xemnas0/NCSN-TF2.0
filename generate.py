@@ -260,11 +260,14 @@ def main():
         images = []
         for i, sample in enumerate(samples):
             # save_image(sample[0, :, :, 0], samples_directory + f'sample_{i}')
-            k_closest_images = utils.find_k_closest(sample, configs.config_values.k, data_as_array)
+            k_closest_images, smallest_idx = utils.find_k_closest(sample, configs.config_values.k, data_as_array)
             # for j, img in enumerate(k_closest_images):
                 # save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
 
+            print(smallest_idx)
+
             images.append([sample, k_closest_images])
+
         save_as_grid_closest_k(images, samples_directory+"k_closest_grid.png", spacing=4)
     else:
         n_images = 400

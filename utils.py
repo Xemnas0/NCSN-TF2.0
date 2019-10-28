@@ -19,7 +19,7 @@ def find_k_closest(image, k, data_as_array):
     l2_distances = tf.norm(tf.norm(tf.norm(data_as_array - image, axis=3), axis=2), axis=1)
     _, smallest_idx = tf.math.top_k(-l2_distances, k)
     closest_k = tf.split(tf.gather(data_as_array, smallest_idx[:k]), k)
-    return closest_k
+    return closest_k, smallest_idx[:k]
 
 
 def get_dataset_image_size(dataset_name):
