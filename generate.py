@@ -43,7 +43,7 @@ def save_as_grid(images, filename, spacing=2):
     # Init image
     grid_cols = rows * height + (rows + 1) * spacing
     grid_rows = cols * width + (cols + 1) * spacing
-    mode = 'L' if channels == 1 else "RGB"
+    mode = 'LA' if channels == 1 else "RGB"
     im = Image.new(mode, (grid_rows, grid_cols))
     for i in range(n_images):
         row = i // rows
@@ -68,7 +68,7 @@ def save_as_grid_closest_k(images, filename, spacing=2):
     # init image
     image_height = rows * height + (rows + 1) * spacing
     image_width = cols * width + (cols + 1) * spacing + spacing  # double spacing between samples and x/occluded_x
-    mode = 'L' if channels == 1 else "RGB"
+    mode = 'LA' if channels == 1 else "RGB"
     im = Image.new(mode, (image_width, image_height), color='white')
 
     for i in range(rows):  # i = row, j = column
