@@ -6,6 +6,7 @@ TODO: decide whether to use training set or test set.
 """
 import csv
 import os
+import shutil
 
 import tensorflow as tf
 
@@ -48,9 +49,13 @@ def main():
 
         if configs.config_values.eval_setting == 'sample':
             # If the directory exists and has images, don't generate
-            if os.path.exists(save_directory) and len(os.listdir(save_directory)):
-                print(save_directory, " already exists and has samples")
-                continue
+            if os.path.exists(save_directory):
+                if len(os.listdir(save_directory)) == batch_FID:
+                    print(save_directory, " already exists and has samples")
+                    continue
+                else:
+                    print("Removing existing samples that were not enough ({})".format(batch_FID))
+                    shutil.rmtree(save_directory)
 
             model, _, step = utils.try_load_model(save_dir, step_ckpt=step_ckpt, return_new_model=False, verbose=False)
 
