@@ -46,7 +46,10 @@ def main():
 
         save_directory = '{}/{}/step{}/samples/'.format(dir_statistics, complete_model_name, step_ckpt)
 
-        if not os.path.exists(save_directory) and configs.config_values.eval_setting == 'sample':
+        if configs.config_values.eval_setting == 'sample':
+            # If the directory exists and has images, don't generate
+            if os.path.exists(save_directory) and len(os.listdir(save_directory)):
+                continue
 
             model, _, step = utils.try_load_model(save_dir, step_ckpt=step_ckpt, return_new_model=False, verbose=False)
 
