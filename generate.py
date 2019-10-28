@@ -92,8 +92,8 @@ def save_as_grid_closest_k(images, filename, spacing=2):
 def sample_one_step(model, x, idx_sigmas, alpha_i):
     z_t = tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)  # TODO: check if stddev is correct
     score = model([x, idx_sigmas])
-    noise = tf.sqrt(alpha_i * 2) * z_t
-    return x + alpha_i * score + noise
+    noise = tf.sqrt(alpha_i) * z_t
+    return x + alpha_i / 2 * score + noise
 
 
 def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
@@ -262,13 +262,13 @@ def main():
             # save_image(sample[0, :, :, 0], samples_directory + f'sample_{i}')
             k_closest_images, smallest_idx = utils.find_k_closest(sample, configs.config_values.k, data_as_array)
             # for j, img in enumerate(k_closest_images):
-                # save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
+            # save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
 
             print(smallest_idx)
 
             images.append([sample, k_closest_images])
 
-        save_as_grid_closest_k(images, samples_directory+"k_closest_grid.png", spacing=4)
+        save_as_grid_closest_k(images, samples_directory + "k_closest_grid.png", spacing=4)
     else:
         n_images = 400
         sample_and_save(model, sigma_levels, n_images=n_images, save_directory=samples_directory)
