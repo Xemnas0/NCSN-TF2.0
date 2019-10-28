@@ -238,7 +238,7 @@ def sample_and_save_intermediate(model, sigmas, eps=2 * 1e-5, T=100, n_images=1,
 
 def main():
     save_dir, complete_model_name = utils.get_savemodel_dir()
-    model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
+    model, optimizer, step = utils.try_load_model(save_dir, step_ckpt=configs.config_values.resume_from, verbose=True)
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
@@ -271,4 +271,4 @@ def main():
         save_as_grid_closest_k(images, samples_directory+"k_closest_grid.png", spacing=4)
     else:
         n_images = 400
-        sample_and_save(model, sigma_levels, n_images=n_images, save_directory=samples_directory)
+        sample_and_save(model, sigma_levels, n_images=n_images, T=100, save_directory=samples_directory)
