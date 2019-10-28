@@ -4,6 +4,7 @@ This selection is based on a small FID score computed with 1000 images.
 TODO: decide whether to use training set or test set.
 
 """
+import csv
 import os
 
 import tensorflow as tf
@@ -41,13 +42,20 @@ def main():
         if model is None:
             break
 
-        save_directory = '{}/{}_step{}/samples/'.format(dir_statistics, complete_model_name, step_ckpt)
+        save_directory = '{}/{}/step{}/samples/'.format(dir_statistics, complete_model_name, step_ckpt)
 
-        sample_many_and_save(model, sigma_levels, save_directory=save_directory, n_images=batch_FID)
+        if not os.path.exists(save_dir):
+            print("Generating samples...")
+            sample_many_and_save(model, sigma_levels, save_directory=save_directory, n_images=batch_FID)
 
+        print("Computing FID...")
         fid_score = fid.main(save_directory, filename_stats_dataset)
 
         print("Steps {}, FID {}".format(step_ckpt, fid_score))
+
+        with open('{}/{}/'.format(dir_statistics, complete_model_name) + 'all_FIDs.csv', mode='a', newline='') as csv_file:
+            writer = csv.writer(csv_file, delimiter=';')
+            writer.writerow([step_ckpt, fid_score])
 
         # is_mean, is_stddev = metric.compute_inception_score(samples)
         # print("Inception score: {:.2}+-{:.2}".format(is_mean, is_stddev))
