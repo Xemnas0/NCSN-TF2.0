@@ -20,8 +20,8 @@ stat_files = {
 
 def main():
     batch_FID = 1000
-    multiple = 5000
-    i = 20
+    multiple = 10000
+    i = 1
 
     dir_statistics = './statistics'
     save_dir, complete_model_name = utils.get_savemodel_dir()
