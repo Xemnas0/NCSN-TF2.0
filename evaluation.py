@@ -49,7 +49,8 @@ def main():
             sample_many_and_save(model, sigma_levels, save_directory=save_directory, n_images=batch_FID)
 
         print("Computing FID...")
-        fid_score = fid.main(save_directory, filename_stats_dataset)
+        fid_score = os.system('python3 fid.py {} {} --gpu GPU:0 '.format(save_directory, filename_stats_dataset))
+        # fid_score = fid.main(save_directory, filename_stats_dataset)
 
         print("Steps {}, FID {}".format(step_ckpt, fid_score))
 

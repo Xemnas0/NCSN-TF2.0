@@ -30,7 +30,7 @@ import pathlib
 import urllib
 import warnings
 
-import tensorflow.compat.v1 as tf
+import tensorflow.compat.v1 as tf_1
 
 
 class InvalidFIDException(Exception):
@@ -40,10 +40,10 @@ class InvalidFIDException(Exception):
 def create_inception_graph(pth):
     """Creates a graph from saved GraphDef file."""
     # Creates graph from saved graph_def.pb.
-    with tf.gfile.FastGFile(pth, 'rb') as f:
-        graph_def = tf.GraphDef()
+    with tf_1.gfile.FastGFile(pth, 'rb') as f:
+        graph_def = tf_1.GraphDef()
         graph_def.ParseFromString(f.read())
-        _ = tf.import_graph_def(graph_def, name='FID_Inception_Net')
+        _ = tf_1.import_graph_def(graph_def, name='FID_Inception_Net')
 
 
 # -------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ def _get_inception_layer(sess):
                         new_shape.append(None)
                     else:
                         new_shape.append(s)
-                o.__dict__['_shape_val'] = tf.TensorShape(new_shape)
+                o.__dict__['_shape_val'] = tf_1.TensorShape(new_shape)
     return pool3
 
 
@@ -318,18 +318,17 @@ def calculate_fid_given_paths(paths, inception_path, low_profile=False):
             raise RuntimeError("Invalid path: %s" % p)
 
     create_inception_graph(str(inception_path))
-    with tf.Session() as sess:
-        sess.run(tf.global_variables_initializer())
+    with tf_1.Session() as sess:
+        sess.run(tf_1.global_variables_initializer())
         m1, s1 = _handle_path(paths[0], sess, low_profile=low_profile)
         m2, s2 = _handle_path(paths[1], sess, low_profile=low_profile)
         fid_value = calculate_frechet_distance(m1, s1, m2, s2)
         return fid_value
 
 def main(path1, path2, gpu="GPU:0", inception_model_path=None, low_profile=False):
-    tf.disable_v2_behavior()
+    tf_1.disable_v2_behavior()
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu
     fid_value = calculate_fid_given_paths([path1, path2], inception_model_path, low_profile=low_profile)
-    tf.enable_v2_behavior()
     return fid_value
 
 if __name__ == "__main__":
@@ -344,7 +343,8 @@ if __name__ == "__main__":
                         help='GPU to use (leave blank for CPU only)')
     parser.add_argument("--lowprofile", action="store_true",
                         help='Keep only one batch of images in memory at a time. This reduces memory footprint, but may decrease speed slightly.')
+    tf_1.disable_v2_behavior()
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     fid_value = calculate_fid_given_paths(args.path, args.inception, low_profile=args.lowprofile)
-    print("FID: ", fid_value)
+    print(fid_value)
