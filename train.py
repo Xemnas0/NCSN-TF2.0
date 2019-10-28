@@ -21,6 +21,7 @@ def train_one_step(model, optimizer, data_batch_perturbed, data_batch, idx_sigma
 
 
 def main():
+    device = utils.get_tensorflow_device()
     tf.random.set_seed(2019)
 
     # load dataset from tfds (or use downloaded version if exists)

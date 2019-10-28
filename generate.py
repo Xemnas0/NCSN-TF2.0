@@ -55,7 +55,6 @@ def save_as_grid(images, filename, spacing=2):
 
     im.save(filename, format="PNG")
 
-
 @tf.function
 def sample_one_step(model, x, idx_sigmas, alpha_i):
     z_t = tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)  # TODO: check if stddev is correct
@@ -145,7 +144,9 @@ def sample_many_and_save(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_i
             batch = _preprocess_image_to_save(batch)
             for image in batch:
                 im = Image.new('RGB', image_size[1:3])
-                im.paste(tf.keras.preprocessing.image.array_to_img(tf.tile(image, [1, 1, 3])))
+                if image_size[-1] == 1:
+                    image = tf.tile(image, [1, 1, 3])
+                im.paste(tf.keras.preprocessing.image.array_to_img(image))
                 im.save(save_directory + f'{idx_image}.png', format="PNG")
                 idx_image += 1
 
@@ -211,8 +212,8 @@ def main():
                                            tf.math.log(configs.config_values.sigma_low),
                                            configs.config_values.num_L))
 
-    samples_directory = './samples/' + f'{start_time}_{configs.config_values.dataset}' \
-        f'_{step}steps_{configs.config_values.filters}filters' + "/"
+    samples_directory = './samples/{}_{}_step{}/'.format(start_time, complete_model_name, step)
+
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 

@@ -47,7 +47,7 @@ def main():
 
         fid_score = fid.main(save_directory, filename_stats_dataset)
 
-        print("Steps {}, FID {}", step_ckpt, fid_score)
+        print("Steps {}, FID {}".format(step_ckpt, fid_score))
 
         # is_mean, is_stddev = metric.compute_inception_score(samples)
         # print("Inception score: {:.2}+-{:.2}".format(is_mean, is_stddev))
