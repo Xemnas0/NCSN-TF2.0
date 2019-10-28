@@ -44,7 +44,7 @@ def main():
 
         save_directory = '{}/{}/step{}/samples/'.format(dir_statistics, complete_model_name, step_ckpt)
 
-        if not os.path.exists(save_dir):
+        if not os.path.exists(save_directory):
             print("Generating samples...")
             sample_many_and_save(model, sigma_levels, save_directory=save_directory, n_images=batch_FID)
 
