@@ -135,7 +135,7 @@ def try_load_model(save_dir, step_ckpt=-1, return_new_model=True, verbose=True):
             print("Trying to load checkpoint with step", step_ckpt,  " model from " + save_dir)
             onlyfiles = [f for f in listdir(save_dir) if isfile(join(save_dir, f))]
             r = re.compile(".*step_{}-.*".format(step_ckpt))
-            name_all_checkpoints = list(filter(r.match, onlyfiles))
+            name_all_checkpoints = sorted(list(filter(r.match, onlyfiles)))
             # Retrieve name of the last checkpoint with that number of steps
             name_ckpt = name_all_checkpoints[-1][:-6]
             checkpoint = save_dir+name_ckpt
