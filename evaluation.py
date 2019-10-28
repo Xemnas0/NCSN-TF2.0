@@ -51,6 +51,9 @@ def main():
         elif configs.config_values.eval_setting == 'fid':
             print("Computing FID...")
             # fid_score = os.system('python fid.py {} {} --gpu GPU:0'.format(save_directory, filename_stats_dataset))
+            if not os.path.exists(save_directory):
+                print("Sample directory ", save_directory, " not found")
+                continue
             fid_score = fid.main(save_directory, filename_stats_dataset)
 
             print("Steps {}, FID {}".format(step_ckpt, fid_score))
