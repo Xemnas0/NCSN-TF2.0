@@ -138,9 +138,12 @@ def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
 
 @tf.function
 def _preprocess_image_to_save(x):
-    x = x * 255
-    x = x + 0.5
-    x = tf.clip_by_value(x, 0, 255)
+    # x = x * 255
+    # x = x + 0.5
+    # x = tf.clip_by_value(x, 0, 255)
+    min = tf.reduce_min(x)
+    max = tf.reduce_max(x)
+    x = (x + min) / (max + min) * 255
     return x
 
 
@@ -270,5 +273,5 @@ def main():
 
         save_as_grid_closest_k(images, samples_directory + "k_closest_grid.png", spacing=4)
     else:
-        n_images = 400
+        n_images = 100
         sample_and_save(model, sigma_levels, n_images=n_images, T=100, save_directory=samples_directory)
