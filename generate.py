@@ -138,12 +138,13 @@ def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
 
 @tf.function
 def _preprocess_image_to_save(x):
-    # x = x * 255
-    # x = x + 0.5
-    # x = tf.clip_by_value(x, 0, 255)
-    min = tf.reduce_min(x)
-    max = tf.reduce_max(x)
-    x = (x + min) / (max + min) * 255
+    x = tf.clip_by_value(x, 0, 1)
+    x = x * 255
+    x = x + 0.5
+    x = tf.clip_by_value(x, 0, 255)
+    # min = tf.reduce_min(x)
+    # max = tf.reduce_max(x)
+    # x = (x + min) / (max + min) * 255
     return x
 
 
