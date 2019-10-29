@@ -35,7 +35,7 @@ def main():
     if configs.config_values.eval_setting == '50k':
         model, _, step = utils.try_load_model(save_dir, step_ckpt=configs.config_values.resume_from,
                                               return_new_model=False, verbose=False)
-        save_directory = '{}/{}/step{}/is_50k/'.format(dir_statistics, complete_model_name, step_ckpt)
+        save_directory = '{}/{}/is_50k/'.format(dir_statistics, complete_model_name, step_ckpt)
         sample_many_and_save(model, sigma_levels, save_directory=save_directory, n_images=50000)
         return
 
