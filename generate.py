@@ -92,8 +92,8 @@ def save_as_grid_closest_k(images, filename, spacing=2):
 def sample_one_step(model, x, idx_sigmas, alpha_i):
     z_t = tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)  # TODO: check if stddev is correct
     score = model([x, idx_sigmas])
-    noise = tf.sqrt(alpha_i * 2) * z_t
-    return x + alpha_i * score + noise
+    noise = tf.sqrt(alpha_i) * z_t
+    return x + alpha_i / 2 * score + noise
 
 
 def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
@@ -138,9 +138,13 @@ def sample_many(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_images=1):
 
 @tf.function
 def _preprocess_image_to_save(x):
+    x = tf.clip_by_value(x, 0, 1)
     x = x * 255
     x = x + 0.5
     x = tf.clip_by_value(x, 0, 255)
+    # min = tf.reduce_min(x)
+    # max = tf.reduce_max(x)
+    # x = (x + min) / (max + min) * 255
     return x
 
 
@@ -238,7 +242,7 @@ def sample_and_save_intermediate(model, sigmas, eps=2 * 1e-5, T=100, n_images=1,
 
 def main():
     save_dir, complete_model_name = utils.get_savemodel_dir()
-    model, optimizer, step = utils.try_load_model(save_dir, verbose=True)
+    model, optimizer, step = utils.try_load_model(save_dir, step_ckpt=configs.config_values.resume_from, verbose=True)
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
@@ -270,9 +274,15 @@ def main():
                 data_subsets.append(k_closest_images)
             data = tf.data.Dataset.from_tensor_slices(data_subsets)
             k_closest_images, smallest_idx = utils.find_k_closest(sample, configs.config_values.k, data)
+            # save_image(sample[0, :, :, 0], samples_directory + f'sample_{i}')
+            k_closest_images, smallest_idx = utils.find_k_closest(sample, configs.config_values.k, data_as_array)
+            # for j, img in enumerate(k_closest_images):
+            # save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
+
+            print(smallest_idx)
             images.append([sample, k_closest_images])
 
-        save_as_grid_closest_k(images, samples_directory+"k_closest_grid.png", spacing=4)
+        save_as_grid_closest_k(images, samples_directory + "k_closest_grid.png", spacing=4)
     else:
-        n_images = 400
-        sample_and_save(model, sigma_levels, n_images=n_images, save_directory=samples_directory)
+        n_images = 100
+        sample_and_save(model, sigma_levels, n_images=n_images, T=100, save_directory=samples_directory)

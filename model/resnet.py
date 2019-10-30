@@ -13,7 +13,7 @@ class ResNet(keras.Model):
     def __init__(self, filters, activation):
         super(ResNet, self).__init__()
 
-        self.increase_channels = layers.Conv2D(32, kernel_size=3, padding='same')
+        self.increase_channels = layers.Conv2D(filters, kernel_size=3, padding='same')
 
         self.res_enc1 = ConditionalResidualBlock(activation, filters, is_encoder=True)
         self.res_enc2 = ConditionalResidualBlock(activation, filters * 2, dilation = 2, is_encoder=True, resize=True)

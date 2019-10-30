@@ -1,12 +1,13 @@
 import argparse
-import tensorflow as tf
-import numpy as np
-from model.refinenet import RefineNet
-from model.resnet import ResNet
-import configs
+import re
 from os import listdir
 from os.path import isfile, join
-import re
+
+import tensorflow as tf
+
+import configs
+from model.refinenet import RefineNet
+from model.resnet import ResNet
 
 dict_datasets_image_size = {
     'mnist': (28, 28, 1),
@@ -63,6 +64,8 @@ def get_command_line_args():
                         help='number of nearest neighbours to find from data (default: 10)')
     parser.add_argument('--resnet', action='store_true',
                         help='whether to run the experiment with ResNet architecture (default: False)')
+    parser.add_argument('--eval_setting', default="sample", type=str,
+                        help="can be \'sample\' or \'fid\' (default: sample)")
 
     parser = parser.parse_args()
     print("=" * 20 + "\nParameters: \n")
@@ -114,6 +117,11 @@ def try_load_model(save_dir, step_ckpt=-1, return_new_model=True, verbose=True):
     :param verbose: true for printing the model summary
     :return:
     """
+    import tensorflow as tf
+    tf.compat.v1.enable_v2_behavior()
+    if configs.config_values.baseline:
+        configs.config_values.num_L = 1
+
     # initialize return values
     if configs.config_values.resnet:
         model = ResNet(filters=configs.config_values.filters, activation=tf.nn.elu)
@@ -128,13 +136,13 @@ def try_load_model(save_dir, step_ckpt=-1, return_new_model=True, verbose=True):
             print("Trying to load latest model from " + save_dir)
             checkpoint = tf.train.latest_checkpoint(save_dir)
         else:
-            print("Trying to load checkpoint with step", step_ckpt,  " model from " + save_dir)
+            print("Trying to load checkpoint with step", step_ckpt, " model from " + save_dir)
             onlyfiles = [f for f in listdir(save_dir) if isfile(join(save_dir, f))]
             r = re.compile(".*step_{}-.*".format(step_ckpt))
-            name_all_checkpoints = list(filter(r.match, onlyfiles))
+            name_all_checkpoints = sorted(list(filter(r.match, onlyfiles)))
             # Retrieve name of the last checkpoint with that number of steps
             name_ckpt = name_all_checkpoints[-1][:-6]
-            checkpoint = save_dir+name_ckpt
+            checkpoint = save_dir + name_ckpt
         if checkpoint is None:
             print("No model found.")
             if return_new_model:
