@@ -1,4 +1,4 @@
-import csv
+import csv, os
 from datetime import datetime
 
 import tensorflow as tf
@@ -23,37 +23,20 @@ def train_one_step(model, data_batch, optimizer):
 
 def main():
     device = utils.get_tensorflow_device()
+    tf.random.set_seed(2019)
 
-    perturbed = False
-    sigma = tf.convert_to_tensor(0.0001, dtype=tf.float32)
+    perturbed = True
 
-    # load dataset from tfds (or use downloaded version if exists)
-    train_data, test_data = get_train_test_data(configs.config_values.dataset)
-    num_examples = int(tf.data.experimental.cardinality(train_data))
+    train_data, _ = get_train_test_data(configs.config_values.dataset)
+    train_data = train_data.shuffle(60000).batch(configs.config_values.batch_size).repeat().prefetch(
+                                                        buffer_size=tf.data.experimental.AUTOTUNE)
 
-    # split data into batches
-    train_data = train_data.shuffle(1000).batch(configs.config_values.batch_size).repeat().prefetch(
-        buffer_size=tf.data.experimental.AUTOTUNE)
-    test_data = test_data.batch(configs.config_values.batch_size)
-
-    # num_batches = int(tf.data.experimental.cardinality(train_data))
-    # num_filters = {'mnist': 16, 'cifar10': 8,
-    #                'celeb_a': 128}  # NOTE change mnist back to 64, cifar10 to 128 and celeb_a to 128
-
-    # path for saving the model(s)
     save_dir = configs.config_values.checkpoint_dir + configs.config_values.dataset + 'toy1' + '/'
-    # if not os.path.exists(save_dir):
-    # os.makedirs(save_dir)
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
 
-    start_time = datetime.now().strftime("%y%m%d-%H%M")
-    log_dir = configs.config_values.log_dir + configs.config_values.dataset + 'toy1' + "/"
-    summary_writer = tf.summary.create_file_writer(log_dir + start_time)
-
-    # initialize model
     model = ToyResNet(activation=tf.nn.elu)
-    # utils.print_model_summary(model)
-    # declare optimizer
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)  # NOTE 10 times larger than in their paper
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
 
     # if resuming training, overwrite model parameters from checkpoint
     if configs.config_values.resume:
@@ -66,44 +49,28 @@ def main():
     else:
         step = 0
 
-    # array of sigma levels
-    # generate geometric sequence of values between sigma_low (0.01) and sigma_high (1.0)
-    sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
-                                           tf.math.log(configs.config_values.sigma_low),
-                                           configs.config_values.num_L))
-
-    # training loop
-    print(f'dataset: {configs.config_values.dataset}, '
-          f'number of examples: {num_examples}, '
-          f'batch size: {configs.config_values.batch_size}\n'
-          f'training...')
-
     total_steps = configs.config_values.steps
     progress_bar = tqdm(train_data, total=total_steps, initial=step + 1)
     progress_bar.set_description(f'iteration {step}/{total_steps} | current loss ?')
 
+    sigma = tf.convert_to_tensor(0.0001, dtype=tf.float32)
+    sigmas = tf.fill((configs.config_values.batch_size, 1, 1, 1), sigma)
+
     loss_history = []
-    with tf.device(device):  # For some reason, this makes everything faster
-        avg_loss = 0
-        for data_batch in progress_bar:
+    with tf.device(device):
+        for i, data_batch in enumerate(progress_bar):
             step += 1
 
             if perturbed:
-                sigmas = tf.reshape(sigma, shape=(data_batch.shape[0], 1, 1, 1))
-                data_batch = data_batch + tf.random.normal(shape=data_batch.shape) * sigmas
+                noise = tf.random.normal(shape=data_batch.shape) * sigmas
+                data_batch = data_batch + noise
 
             current_loss = train_one_step(model, data_batch, optimizer)
             loss_history.append(current_loss)
             progress_bar.set_description(f'iteration {step}/{total_steps} | current loss {current_loss:.3f}')
 
-            avg_loss += current_loss
-            if step % configs.config_values.checkpoint_freq == 0:
-                print(f"\n Average loss: {avg_loss / configs.config_values.checkpoint_freq:.3f}")
-                avg_loss = 0
             if step == total_steps:
                 with open(save_dir + 'loss_history.csv', mode='a', newline='') as csv_file:
                     writer = csv.writer(csv_file, delimiter=';')
                     writer.writerows(loss_history)
                 return
-
-    # NOTE bad way to choose the best model - saving all checkpoints and then testing after
