@@ -43,10 +43,15 @@ def main():
     # generate geometric sequence of values between sigma_low (0.01) and sigma_high (1.0)
     if configs.config_values.baseline:
         sigma_levels = tf.ones(1) * configs.config_values.sigma_low
+    elif configs.config_values.sigma_sequence == 'linear':
+        sigma_levels = tf.linspace(configs.config_values.sigma_high,
+                                   configs.config_values.sigma_low,
+                                   configs.config_values.num_L)
     else:
         sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
                                                tf.math.log(configs.config_values.sigma_low),
                                                configs.config_values.num_L))
+
 
     model, optimizer, step = utils.try_load_model(save_dir, step_ckpt=configs.config_values.resume_from, verbose=True)
 

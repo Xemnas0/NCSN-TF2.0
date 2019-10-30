@@ -42,6 +42,8 @@ def get_command_line_args():
                         help="lowest value for noise (default: 0.01)")
     parser.add_argument('--sigma_high', default=1.0, type=float,
                         help="highest value for noise (default: 1.0)")
+    parser.add_argument('--sigma_sequence', default="exponential", type=str,
+                        help="can be \'exponential\' or \'linear\' (default: exponential)")
     parser.add_argument('--steps', default=200000, type=int,
                         help="number of steps to train the model for (default: 200000)")
     parser.add_argument('--learning_rate', default=0.001, type=float,
