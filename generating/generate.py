@@ -9,7 +9,6 @@ from tqdm import tqdm
 
 import configs
 import utils
-from datasets.dataset_loader import get_data_k_nearest, get_celeb_a
 
 
 def clamped(x):
@@ -26,7 +25,7 @@ def save_image(image, dir):
     plt.savefig(dir)
 
 
-def save_as_grid(images, filename, spacing=2):
+def save_as_grid(images, filename, spacing=2, rows=None):
     """
     Partially from https://stackoverflow.com/questions/42040747/more-idiomatic-way-to-display-images-in-a-grid-with-numpy
     :param images:
@@ -34,7 +33,8 @@ def save_as_grid(images, filename, spacing=2):
     """
     # Define grid dimensions
     n_images, height, width, channels = images.shape
-    rows = np.floor(np.sqrt(n_images)).astype(int)
+    if rows is None:
+        rows = np.floor(np.sqrt(n_images)).astype(int)
     cols = n_images // rows
 
     # Process image
@@ -46,44 +46,12 @@ def save_as_grid(images, filename, spacing=2):
     mode = 'LA' if channels == 1 else "RGB"
     im = Image.new(mode, (grid_rows, grid_cols))
     for i in range(n_images):
-        row = i // rows
-        col = i % rows
-        row_start = row * height + (1 + row) * spacing
-        col_start = col * width + (1 + col) * spacing
-        im.paste(tf.keras.preprocessing.image.array_to_img(images[i]), (row_start, col_start))
-        # im.show()
-
-    im.save(filename, format="PNG")
-
-
-def save_as_grid_closest_k(images, filename, spacing=2):
-    """
-    Partially from https://stackoverflow.com/questions/42040747/more-idiomatic-way-to-display-images-in-a-grid-with-numpy
-    """
-    # images is of shape [ [ sample, [ closest, closest, ... ] ], [ sample, [ closest, closest, ... ] ]
-    _, height, width, channels = images[0][0].shape
-    rows = len(images)
-    cols = len(images[0][1]) + 1
-
-    # init image
-    image_height = rows * height + (rows + 1) * spacing
-    image_width = cols * width + (cols + 1) * spacing + spacing  # double spacing between samples and x/occluded_x
-    mode = 'LA' if channels == 1 else "RGB"
-    im = Image.new(mode, (image_width, image_height), color='white')
-
-    for i in range(rows):  # i = row, j = column
-        sample, closest = images[i]
-
-        # plot the sample
-        row_start = i * height + (1 + i) * spacing
-        col_start = spacing
-
-        im.paste(tf.keras.preprocessing.image.array_to_img(sample[0, :, :, :]), (col_start, row_start))
-
-        # plot the closest images from training set
-        for j in range(len(closest)):
-            col_start = (j + 1) * width + (j + 2) * spacing + spacing
-            im.paste(tf.keras.preprocessing.image.array_to_img(closest[j][0, :, :, :]), (col_start, row_start))
+        col = i // rows
+        row = i % rows
+        x = col * height + (1 + col) * spacing
+        y = row * width + (1 + row) * spacing
+        im.paste(tf.keras.preprocessing.image.array_to_img(images[i]), (x, y))
+        # im.show() # for debugging
 
     im.save(filename, format="PNG")
 
@@ -188,33 +156,7 @@ def sample_many_and_save(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_i
                 idx_image += 1
 
 
-def sample_and_save(model, sigmas, eps=2*1e-5, T=100, n_images=1, save_directory=None):
-    """
-    :param model:
-    :param sigmas:
-    :param eps:
-    :param T:
-    :return:
-    """
-    if not os.path.exists(save_directory):
-        os.makedirs(save_directory)
-
-    image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
-
-    x = tf.random.uniform(shape=image_size)
-
-    for i, sigma_i in enumerate(tqdm(sigmas, desc='Sampling for each sigma')):
-        alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
-        idx_sigmas = tf.ones(n_images, dtype=tf.int32) * i
-        for t in range(T):
-            x = sample_one_step(model, x, idx_sigmas, alpha_i)
-
-            if (t + 1) % 10 == 0:
-                save_as_grid(x, save_directory + f'sigma{i + 1}_t{t + 1}.png')
-    return x
-
-
-def sample_and_save_intermediate(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directory=None):
+def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directory=None):
     """
     :param model:
     :param sigmas:
@@ -254,35 +196,4 @@ def main():
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 
-    if configs.config_values.find_nearest:
-        n_images = 10  # TODO make this not be hard-coded
-        samples = tf.split(sample_many(model, sigma_levels, batch_size=configs.config_values.batch_size,
-                                       T=100, n_images=n_images), n_images)
-
-        if configs.config_values.dataset == 'celeb_a':
-            data, _ = get_celeb_a(random_flip=False)
-        else:
-            data = get_data_k_nearest(configs.config_values.dataset)
-            data = data.batch(int(tf.data.experimental.cardinality(data)))
-            # data = tf.data.experimental.get_single_element(data)
-
-        images = []
-        data_subsets = []
-        for i, sample in enumerate(samples):
-            for data_batch in data:
-                k_closest_images, _ = utils.find_k_closest(sample, configs.config_values.k, data_batch)
-                data_subsets.append(k_closest_images)
-            data = tf.data.Dataset.from_tensor_slices(data_subsets)
-            k_closest_images, smallest_idx = utils.find_k_closest(sample, configs.config_values.k, data)
-            # save_image(sample[0, :, :, 0], samples_directory + f'sample_{i}')
-            k_closest_images, smallest_idx = utils.find_k_closest(sample, configs.config_values.k, data_as_array)
-            # for j, img in enumerate(k_closest_images):
-            # save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
-
-            print(smallest_idx)
-            images.append([sample, k_closest_images])
-
-        save_as_grid_closest_k(images, samples_directory + "k_closest_grid.png", spacing=4)
-    else:
-        n_images = 100
-        sample_and_save(model, sigma_levels, n_images=n_images, T=100, save_directory=samples_directory)
+    sample_and_save(model, sigma_levels, n_images=12, T=100, save_directory=samples_directory)
