@@ -22,7 +22,7 @@ def preprocess(dataset_name, data, train=True):
     return data
 
 
-def _preprocess_celeb_a(data):
+def _preprocess_celeb_a(data, random_flip=True):
     # Discard labels and landmarks
     data = data.map(lambda x: x['image'], num_parallel_calls=AUTOTUNE)
     # Take a 140x140 centre crop of the image
@@ -34,17 +34,18 @@ def _preprocess_celeb_a(data):
     # Maybe cache in memory
     data = data.cache()
     # Randomly flip
-    data = data.map(lambda x: tf.image.random_flip_left_right(x), num_parallel_calls=AUTOTUNE)
+    if random_flip:
+        data = data.map(lambda x: tf.image.random_flip_left_right(x), num_parallel_calls=AUTOTUNE)
     return data
 
 
-def get_celeb_a():
+def get_celeb_a(random_flip=True):
     batch_size = configs.config_values.batch_size
     data_generators = tfds.load(name='celeb_a', batch_size=batch_size, data_dir="data", shuffle_files=False)
     train = data_generators['train']
     test = data_generators['test']
-    train = _preprocess_celeb_a(train)
-    test = _preprocess_celeb_a(test)
+    train = _preprocess_celeb_a(train, random_flip=random_flip)
+    test = _preprocess_celeb_a(test, random_flip=False)
     return train, test
 
 
