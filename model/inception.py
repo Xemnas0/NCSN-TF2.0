@@ -135,6 +135,6 @@ def _preprocess_dataset_inception(input_size, images=None, data=None, batch_size
 
 @tf.function
 def _inception_one_step(model, batch):
-    with tf.device('CPU'):  # TODO: change this to GPU for the cloud
+    with tf.device('GPU:0'):  # TODO: change this to GPU for the cloud
         predictions = model(batch)
     return predictions
