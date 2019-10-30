@@ -41,30 +41,18 @@ def main():
 
     # array of sigma levels
     # generate geometric sequence of values between sigma_low (0.01) and sigma_high (1.0)
-    if configs.config_values.baseline:
+    if configs.config_values.model == 'baseline':
         sigma_levels = tf.ones(1) * configs.config_values.sigma_low
     elif configs.config_values.sigma_sequence == 'linear':
         sigma_levels = tf.linspace(configs.config_values.sigma_high,
                                    configs.config_values.sigma_low,
                                    configs.config_values.num_L)
-    else:
+    elif configs.config_values.sigma_sequence == 'geometric':
         sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
                                                tf.math.log(configs.config_values.sigma_low),
                                                configs.config_values.num_L))
 
-
     model, optimizer, step = utils.try_load_model(save_dir, step_ckpt=configs.config_values.resume_from, verbose=True)
-
-    # # Compute inception score mean and standard deviation
-    # sample_dir = configs.config_values.samples_dir + start_time + '_' + complete_model_name + '/'
-    # sample_many_and_save(model, sigma_levels, n_images=2, save_directory=sample_dir)
-    # sampled_images = sample_many(model, sigma_levels, n_images=2)
-    # is_mean, is_stddev = metrics.compute_inception_score(sampled_images, image_side_inception=199)
-    # print(f'Inception Score: {is_mean:.3} +- {is_stddev:.3}')
-    # # Compute fid
-    # test_data_inception = test_data.take(2176)
-    # fid = metrics.compute_fid(images_1=sampled_images, data_2=test_data_inception, image_side_inception=199)
-    # print(f'FID Score: {fid:.3}')
 
     total_steps = configs.config_values.steps
     progress_bar = tqdm(train_data, total=total_steps, initial=step + 1)

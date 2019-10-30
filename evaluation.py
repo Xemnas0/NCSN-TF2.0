@@ -13,7 +13,7 @@ import tensorflow as tf
 import configs
 import fid
 import utils
-from generate import sample_many_and_save
+from generating.generate import sample_many_and_save
 
 stat_files = {
     "cifar10": "./statistics/fid_stats_cifar10_train.npz"
