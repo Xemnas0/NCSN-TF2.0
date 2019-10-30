@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 import configs
 import utils
-from datasets.dataset_loader import get_data_k_nearest
+from datasets.dataset_loader import get_data_k_nearest, get_celeb_a
 
 
 def clamped(x):
@@ -184,7 +184,7 @@ def sample_many_and_save(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_i
                 idx_image += 1
 
 
-def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directory=None):
+def sample_and_save(model, sigmas, eps=2*1e-5, T=100, n_images=1, save_directory=None):
     """
     :param model:
     :param sigmas:
@@ -252,20 +252,24 @@ def main():
 
     if configs.config_values.find_nearest:
         n_images = 10  # TODO make this not be hard-coded
-        samples = tf.split(sample_many(model, sigma_levels, T=100, n_images=n_images), n_images)
-        data_as_array = get_data_k_nearest(configs.config_values.dataset)
-        data_as_array = data_as_array.batch(int(tf.data.experimental.cardinality(data_as_array)))
-        data_as_array = tf.data.experimental.get_single_element(data_as_array)
+        samples = tf.split(sample_many(model, sigma_levels, batch_size=configs.config_values.batch_size,
+                                       T=100, n_images=n_images), n_images)
+
+        if configs.config_values.dataset == 'celeb_a':
+            data, _ = get_celeb_a(random_flip=False)
+        else:
+            data = get_data_k_nearest(configs.config_values.dataset)
+            data = data.batch(int(tf.data.experimental.cardinality(data)))
+            # data = tf.data.experimental.get_single_element(data)
 
         images = []
+        data_subsets = []
         for i, sample in enumerate(samples):
-            # save_image(sample[0, :, :, 0], samples_directory + f'sample_{i}')
-            k_closest_images, smallest_idx = utils.find_k_closest(sample, configs.config_values.k, data_as_array)
-            # for j, img in enumerate(k_closest_images):
-                # save_image(img[0, :, :, 0], samples_directory + f'sample_{i}_closest_{j}')
-
-            print(smallest_idx)
-
+            for data_batch in data:
+                k_closest_images, _ = utils.find_k_closest(sample, configs.config_values.k, data_batch)
+                data_subsets.append(k_closest_images)
+            data = tf.data.Dataset.from_tensor_slices(data_subsets)
+            k_closest_images, smallest_idx = utils.find_k_closest(sample, configs.config_values.k, data)
             images.append([sample, k_closest_images])
 
         save_as_grid_closest_k(images, samples_directory+"k_closest_grid.png", spacing=4)
