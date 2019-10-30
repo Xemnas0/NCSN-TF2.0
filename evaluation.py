@@ -14,10 +14,20 @@ import configs
 import fid
 import utils
 from generating.generate import sample_many_and_save
+from model.inception import Metrics
 
 stat_files = {
     "cifar10": "./statistics/fid_stats_cifar10_train.npz"
 }
+
+
+def decode_img(img):
+    # convert the compressed string to a 3D uint8 tensor
+    img = tf.image.decode_jpeg(img, channels=3)
+    # Use `convert_image_dtype` to convert to floats in the [0,1] range.
+    img = tf.image.convert_image_dtype(img, tf.float32)
+    # resize the image to the desired size.
+    return img
 
 
 def main():
@@ -32,6 +42,8 @@ def main():
                                            tf.math.log(configs.config_values.sigma_low),
                                            configs.config_values.num_L))
 
+    filename_stats_dataset = stat_files[configs.config_values.dataset]
+
     if configs.config_values.eval_setting == '50k':
         model, _, step = utils.try_load_model(save_dir, step_ckpt=configs.config_values.resume_from,
                                               return_new_model=False, verbose=False)
@@ -39,7 +51,20 @@ def main():
         sample_many_and_save(model, sigma_levels, save_directory=save_directory, n_images=50000)
         return
 
-    filename_stats_dataset = stat_files[configs.config_values.dataset]
+    if configs.config_values.eval_setting == 'eval_50k':
+        save_directory = '{}/{}/is_50k/'.format(dir_statistics, complete_model_name, step_ckpt)
+        images = []
+        for filename in os.listdir(save_directory):
+            image = decode_img(tf.io.read_file(save_directory + filename))
+            images.append(image)
+        images = tf.convert_to_tensor(images)
+        metrics = Metrics()
+
+        is_mean, is_stddev = metrics.compute_inception_score(images)
+        print('Inception Score: {:.3}+-{:.3}'.format(is_mean, is_stddev))
+        fid_score = fid.main(save_directory, filename_stats_dataset, gpu="GPU:0")
+        print('FID Score: {:.3}'.format(fid_score))
+        return
 
     csv_filename = '{}/{}/'.format(dir_statistics, complete_model_name) + 'all_FIDs.csv'
     # Remove csv if it already exists
