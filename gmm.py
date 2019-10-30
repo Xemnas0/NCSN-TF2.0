@@ -10,13 +10,12 @@ import os, utils
 tfd = tfp.distributions
 
 
-def gmm():
-    gmm = tfd.MixtureSameFamily(mixture_distribution=tfd.Categorical(
-        probs=[0.2, 0.8]),
-        components_distribution=tfd.MultivariateNormalDiag(
-            loc=[[-5, -5],  # component 1
-                 [5, 5]],  # component 2
-            scale_identity_multiplier=[1, 1]))
+def gmm(probs, loc, scale):
+    gmm = tfd.MixtureSameFamily(
+        mixture_distribution=tfd.Categorical(probs=probs),
+                                             components_distribution=tfd.MultivariateNormalDiag(
+                                                 loc=loc,
+                                                 scale_identity_multiplier=scale))
     return gmm
 
 
@@ -32,9 +31,9 @@ def visualize_density(gmm, x):
     grid = meshgrid(x)
     fig, ax = plt.subplots(figsize=(6, 6))
     ax.imshow(gmm.prob(grid), cmap='inferno', extent=[-8, 8, -8, 8], origin='lower')
-    ax.title.set_text('Mixture of Gaussians')
     ax.set_xlabel(r'$x$')
     ax.set_ylabel(r'$y$')
+    plt.savefig("density.pdf", bbox_inches="tight")
     plt.show()
     return
 
@@ -44,8 +43,14 @@ def sample(gmm, nr_samples):
     return s.sample()
 
 
-def visualize_samples(samples):
-    plt.scatter(samples.numpy()[:, 0], samples.numpy()[:, 1], s=10)
+def visualize_samples(samples, filename="samples"):
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.scatter(samples.numpy()[:, 0], samples.numpy()[:, 1], marker='.', color="black")
+    ax.set_xlabel(r'$x$')
+    ax.set_ylabel(r'$y$')
+    ax.set_xlim(-10, 10)
+    ax.set_ylim(-10, 10)
+    plt.savefig(f"{filename}.pdf", bbox_inches="tight")
     plt.show()
     return
 
@@ -73,10 +78,14 @@ def analytic_log_prob_grad(gmm, x, sigma_i=None):
     return anal_gradients
 
 
-def visualize_gradients(x, grads):
+def visualize_gradients(x, grads, filename="gradients"):
     U, V = grads[:, :, 1], grads[:, :, 0]
-    plt.quiver(x, x, U, V)
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.quiver(x, x, U, V)
     plt.gca().set_aspect('equal', adjustable='box')
+    ax.set_xlabel(r'$x$')
+    ax.set_ylabel(r'$y$')
+    plt.savefig(f"{filename}.pdf", bbox_inches="tight")
     plt.show()
 
 
@@ -115,61 +124,76 @@ def train(gmm, batch_size, total_steps):
             if step == total_steps:
                 return model
 
+
 @tf.function
-def langevin_dynamics(analytic_log_prob_grad, gmm, x, sigma_i=None, alpha=0.1, T=1000):
+def langevin_dynamics(grad_function, gmm, x, sigma_i=None, alpha=0.1, T=1000):
     for t in range(T):
         z_t = tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)
         noise = tf.sqrt(alpha) * z_t
-        x = x + alpha / 2 * analytic_log_prob_grad(gmm, x, sigma_i) + noise
+        x = x + alpha / 2 * grad_function(gmm, x, sigma_i) + noise
     return x
 
 
-def annealed_langevin_dynamics(analytic_log_prob_grad, gmm, x, sigmas, eps=0.1, T=100):
-    for i, sigma_i in enumerate(tqdm(sigmas)):
+def annealed_langevin_dynamics(grad_function, gmm, x, sigmas, eps=0.1, T=100):
+    for i, sigma_i in enumerate(sigmas):
         alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
-        # idx_sigmas = tf.ones(x.get_shape()[0], dtype=tf.int32) * i
-        x = langevin_dynamics(analytic_log_prob_grad, gmm, x, sigma_i, alpha_i, T)
+        x = langevin_dynamics(grad_function, gmm, x, sigma_i=sigma_i, alpha=alpha_i, T=T)
     return x
 
 if __name__ == "__main__":
     tf.get_logger().setLevel('ERROR')
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
-    # create a GMM
-    gmm = gmm()
+    # create a GMM (probabilities, cluster centres, cluster scales)
+    gmm = gmm([0.8, 0.2], [[5,5],[-5,-5]], [1,1])
 
     # define grids
-    x = np.linspace(-8, 8, 5, dtype=np.float32)
-    x_for_grads = np.linspace(-8, 8, num=20)
-
-    # plot density
+    # x = np.linspace(-8, 8, 500, dtype=np.float32)
+    # x_for_grads = np.linspace(-8, 8, num=20)
+    #
+    # # plot density
     # visualize_density(gmm, x)
-
-    # compute analytic gradients
+    #
+    # # compute analytic gradients
     # grid = meshgrid(x_for_grads)
     # anal_grads = analytic_log_prob_grad(gmm, grid)
+    #
+    # # compute estimated gradients (scores)
+    # estimated_grads = estimated_log_prob_grad(gmm, x_for_grads)
+    #
+    # # visualize gradients
+    # visualize_gradients(x_for_grads, anal_grads, "grad_analytic")
+    # visualize_gradients(x_for_grads, estimated_grads, "grad_est")
 
-    # compute estimated gradients (scores)
-    # estimated_log_prob_grad(gmm, x_for_grads)
-
-    # visualize gradients
-    # visualize_gradients(x_for_grads, anal_grads)
+    #TODO experiment more with this maybe? is there some sort of setup where it doesn't work well anymore?
 
     # exact samples from the mixture
-    # samples = sample(gmm, 100)
-
-    # sampling with (annealed) Langevin dynamics
+    samples = sample(gmm, 1280)
+    # visualize_samples(samples, "real_samples")
+    #
+    # # sampling with (annealed) Langevin dynamics
     x_init = tf.random.uniform(shape=(1280, 2), minval=-8, maxval=8)
-
-    # Langevin dynamics
+    #
+    # # Langevin dynamics
     # samples_langevin = langevin_dynamics(analytic_log_prob_grad, gmm, x_init)
+    # visualize_samples(samples_langevin, "samples_langevin")
+    #
+    # # annealed Langevin dynamics
+    # # TODO: THEY REPORT DIFFERENT LOW_SIGMA IN THE PAPER, IT DOESN'T WORK WITH WHAT THEY PROVIDE
+    # sigma_levels = tf.math.exp(tf.linspace(tf.math.log(10.0), tf.math.log(0.1), 10))
+    sigma_levels = tf.math.exp(tf.linspace(tf.math.log(10.0), tf.math.log(0.1), 10))
 
-    # annealed Langevin dynamics
-    # TODO: THEY REPORT DIFFERENT LOW_SIGMA IN THE PAPER, IT DOESN'T WORK WITH WHAT THEY PROVIDE
-    sigma_levels = tf.math.exp(tf.linspace(tf.math.log(10.0),
-                                           0.1,
-                                           10))
-    samples_annealed_langevin = annealed_langevin_dynamics(analytic_log_prob_grad, gmm, x_init, sigma_levels)
-
-    # plot samples
-    visualize_samples(samples_annealed_langevin)
+    # sigma_levels = tf.clip_by_value(sigma_levels, 0.1, 10.0)
+    # print(sigma_levels)
+    #
+    # samples_annealed_langevin = annealed_langevin_dynamics(analytic_log_prob_grad, gmm, x_init, sigma_levels, eps=4*0.00001)
+    # visualize_samples(samples_annealed_langevin, "samples_annealed_langevin_4e10-4")
+    #
+    # # # annealed Langevin dynamics
+    # # # TODO: THEY REPORT DIFFERENT LOW_SIGMA IN THE PAPER, IT DOESN'T WORK WITH WHAT THEY PROVIDE
+    # # sigma_levels = tf.math.exp(tf.linspace(tf.math.log(10.0), tf.math.log(0.1), 10))
+    # # print(sigma_levels)
+    # # samples_annealed_langevin = annealed_langevin_dynamics(analytic_log_prob_grad, gmm, x_init, sigma_levels)
+    # #
+    # # # plot samples
+    # # visualize_samples(samples_annealed_langevin)
