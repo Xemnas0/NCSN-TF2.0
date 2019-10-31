@@ -167,45 +167,49 @@ class ResidualBlock(layers.Layer):
     def __init__(self, activation, filters, is_encoder, kernel_size=3, resize=False):
         super(ResidualBlock, self).__init__()
 
-        # FIXME: THEY DON'T MENTION WHAT KIND OF NORMALIZATION IS USED, I ASSUMED BN, BUT THEY USE GROUP NORMALIZATION, NOT SURE IF THIS MAKES A DIFFERENCE?
         self.norm1 = layers.BatchNormalization()
         self.norm2 = layers.BatchNormalization()
         self.activation = activation
-
+        self.resize = resize
         self.filters = filters
         self.is_encoder = is_encoder
-        self.resize = resize
-        self.strides = strides = 2 if resize else 1
-        padding = 'same'  # if strides == 1 else 'valid'
-
         if is_encoder:
-            self.conv1 = layers.Conv2D(filters, kernel_size, strides=strides, padding=padding)
-            self.conv2 = layers.Conv2D(filters, kernel_size, strides=1, padding='same')
+            self.conv1 = layers.Conv2D(filters, kernel_size, padding="same")
+            self.conv2 = layers.Conv2D(filters, kernel_size, padding="same")
         else:
-            self.conv1 = layers.Conv2DTranspose(filters, kernel_size, strides=1, padding='same')
-            self.conv2 = layers.Conv2DTranspose(filters, kernel_size, strides=strides, padding=padding)
-
-        self.increase_channels_skip = layers.Conv2D(filters, kernel_size=1, strides=strides, padding=padding)
+            self.conv1 = layers.Conv2DTranspose(filters, kernel_size, padding="same")
+            self.conv2 = layers.Conv2DTranspose(filters, kernel_size, padding="same")
+        self.adjust_skip = None
 
     def build(self, input_shape):
-        self.increase_skip_size = layers.Conv2D(self.filters, kernel_size=1, strides=2)
-        self.decrease_skip_size = layers.Conv2DTranspose(self.filters, kernel_size=1, strides=self.strides)
+        # we might have different number of filters and/or dimensions after the block,
+        # so we need to adjust the skip connection to match by a 1x1 convolution
+        begin_filters = input_shape[-1]
+        if (begin_filters != self.filters):
+            if self.is_encoder:
+                self.adjust_skip = layers.Conv2D(self.filters, kernel_size=1, padding='same')
+            else:
+                self.adjust_skip = layers.Conv2DTranspose(self.filters, kernel_size=1, padding='same')
 
     def call(self, inputs, **kwargs):
-        x = self.norm1(inputs)
+        skip_x, idx_sigmas = inputs
+        x = self.norm1(skip_x)
         x = self.activation(x)
         x = self.conv1(x)
         x = self.norm2(x)
         x = self.activation(x)
         x = self.conv2(x)
 
-        if x.shape != inputs.shape:
+        if self.adjust_skip is not None:
+            skip_x = self.adjust_skip(skip_x)
+
+        if self.resize:
             if self.is_encoder:
-                skip_x = self.increase_channels_skip(inputs)
+                x = tf.nn.avg_pool2d(x, ksize=2, strides=2, padding='SAME')
+                skip_x = tf.nn.avg_pool2d(skip_x, ksize=2, strides=2, padding='SAME')
             else:
-                skip_x = self.decrease_skip_size(inputs)
-        else:
-            skip_x = inputs
+                x = tf.image.resize(x, (x.shape[1] * 2, x.shape[2] * 2))
+                skip_x = tf.image.resize(skip_x, (x.shape[1], x.shape[2]))
 
         return skip_x + x
 
