@@ -192,7 +192,7 @@ class ResidualBlock(layers.Layer):
                 self.adjust_skip = layers.Conv2DTranspose(self.filters, kernel_size=1, padding='same')
 
     def call(self, inputs, **kwargs):
-        skip_x, idx_sigmas = inputs
+        skip_x = inputs
         x = self.norm1(skip_x)
         x = self.activation(x)
         x = self.conv1(x)
