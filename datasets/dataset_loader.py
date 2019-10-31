@@ -60,11 +60,11 @@ def get_train_test_data(dataset_name):
 
 
 def get_data_inpainting(dataset_name, n):
-    data_generator = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", split='test')
-    data = tf.data.Dataset.from_tensor_slices(data_generator['image']).take(n)
-    data = preprocess(dataset_name, data, train=False)
-
-    return data.batch(1)
+    data_generator = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", split='train')
+    data = data_generator['image']
+    data = tf.random.shuffle(data, seed=1000)
+    data = data[:n] / 255
+    return data
 
 
 def get_data_k_nearest(dataset_name):

@@ -1,5 +1,5 @@
-import csv, os
-from datetime import datetime
+import csv
+import os
 
 import tensorflow as tf
 from tqdm import tqdm
@@ -21,6 +21,11 @@ def train_one_step(model, data_batch, optimizer):
     return current_loss
 
 
+def logit_transform(image, lam=1e-6):
+    image = lam + (1 - 2 * lam) * image
+    return tf.math.log(image) - tf.math.log1p(-image)
+
+
 def main():
     device = utils.get_tensorflow_device()
     tf.random.set_seed(2019)
@@ -28,8 +33,8 @@ def main():
     perturbed = True
 
     train_data, _ = get_train_test_data(configs.config_values.dataset)
-    train_data = train_data.shuffle(60000).batch(configs.config_values.batch_size).repeat().prefetch(
-                                                        buffer_size=tf.data.experimental.AUTOTUNE)
+    train_data = train_data.shuffle(10000).batch(configs.config_values.batch_size).repeat().prefetch(
+        buffer_size=tf.data.experimental.AUTOTUNE)
 
     save_dir = configs.config_values.checkpoint_dir + configs.config_values.dataset + 'toy1' + '/'
     if not os.path.exists(save_dir):
@@ -54,7 +59,10 @@ def main():
     progress_bar.set_description(f'iteration {step}/{total_steps} | current loss ?')
 
     sigma = tf.convert_to_tensor(0.0001, dtype=tf.float32)
-    sigmas = tf.fill((configs.config_values.batch_size, 1, 1, 1), sigma)
+
+    # Delete csv file if it exists
+    if os.path.exists(save_dir + 'loss_history.csv'):
+        os.remove(save_dir + 'loss_history.csv')
 
     loss_history = []
     with tf.device(device):
@@ -62,15 +70,19 @@ def main():
             step += 1
 
             if perturbed:
+                sigmas = tf.fill((data_batch.shape[0], 1, 1, 1), sigma)
                 noise = tf.random.normal(shape=data_batch.shape) * sigmas
                 data_batch = data_batch + noise
 
             current_loss = train_one_step(model, data_batch, optimizer)
-            loss_history.append(current_loss)
+            loss_history.append([step, current_loss.numpy()])
             progress_bar.set_description(f'iteration {step}/{total_steps} | current loss {current_loss:.3f}')
 
-            if step == total_steps:
+            if step % configs.config_values.checkpoint_freq == 0:
                 with open(save_dir + 'loss_history.csv', mode='a', newline='') as csv_file:
                     writer = csv.writer(csv_file, delimiter=';')
                     writer.writerows(loss_history)
+                loss_history = []
+
+            if step == total_steps:
                 return
