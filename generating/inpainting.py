@@ -111,7 +111,7 @@ def main():
 
     # TODO add these values to args
     N_to_occlude = 10  # number of images to occlude
-    n_reconstructions = 10  # number of samples to generate for each occluded image
+    n_reconstructions = 8  # number of samples to generate for each occluded image
     mask_style = 'vertical_split'  # what kind of occlusion to use
     # mask_style = 'middle'  # what kind of occlusion to use
 
@@ -151,7 +151,7 @@ def main():
     for i in range(N_to_occlude):
         images.append([data[i] * mask, reconstructions[i], data[i]])
 
-    save_as_grid(images, samples_directory + '/grid.png')
+    save_as_grid(images, samples_directory + '/grid.png', spacing=5)
 
     # for i, x in enumerate(data):
     #     occluded_x = x * mask

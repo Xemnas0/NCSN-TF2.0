@@ -83,4 +83,4 @@ def main():
         # print(smallest_idx)
         images.append([sample, k_closest_images])
 
-    save_as_grid_closest_k(images, samples_directory + "k_closest_grid.png", spacing=4)
+    save_as_grid_closest_k(images, samples_directory + "k_closest_grid.png", spacing=5)
