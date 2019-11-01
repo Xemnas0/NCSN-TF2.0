@@ -173,23 +173,24 @@ class ResidualBlock(layers.Layer):
         self.resize = resize
         self.filters = filters
         self.is_encoder = is_encoder
+        self.strides = strides = 2 if resize else 1
         if is_encoder:
-            self.conv1 = layers.Conv2D(filters, kernel_size, padding="same")
-            self.conv2 = layers.Conv2D(filters, kernel_size, padding="same")
+            self.conv1 = layers.Conv2D(filters, kernel_size, strides=strides, padding="same")
+            self.conv2 = layers.Conv2D(filters, kernel_size, strides=1, padding="same")
         else:
-            self.conv1 = layers.Conv2DTranspose(filters, kernel_size, padding="same")
-            self.conv2 = layers.Conv2DTranspose(filters, kernel_size, padding="same")
+            self.conv1 = layers.Conv2DTranspose(filters, kernel_size, strides=1, padding="same")
+            self.conv2 = layers.Conv2DTranspose(filters, kernel_size, strides=strides, padding="same")
         self.adjust_skip = None
 
     def build(self, input_shape):
         # we might have different number of filters and/or dimensions after the block,
         # so we need to adjust the skip connection to match by a 1x1 convolution
         begin_filters = input_shape[-1]
-        if (begin_filters != self.filters):
+        if (begin_filters != self.filters) or self.resize:
             if self.is_encoder:
-                self.adjust_skip = layers.Conv2D(self.filters, kernel_size=1, padding='same')
+                self.adjust_skip = layers.Conv2D(self.filters, kernel_size=1, strides=self.strides, padding='same')
             else:
-                self.adjust_skip = layers.Conv2DTranspose(self.filters, kernel_size=1, padding='same')
+                self.adjust_skip = layers.Conv2DTranspose(self.filters, kernel_size=1, strides=self.strides, padding='same')
 
     def call(self, inputs, **kwargs):
         skip_x = inputs
@@ -202,14 +203,14 @@ class ResidualBlock(layers.Layer):
 
         if self.adjust_skip is not None:
             skip_x = self.adjust_skip(skip_x)
-
-        if self.resize:
-            if self.is_encoder:
-                x = tf.nn.avg_pool2d(x, ksize=2, strides=2, padding='SAME')
-                skip_x = tf.nn.avg_pool2d(skip_x, ksize=2, strides=2, padding='SAME')
-            else:
-                x = tf.image.resize(x, (x.shape[1] * 2, x.shape[2] * 2))
-                skip_x = tf.image.resize(skip_x, (x.shape[1], x.shape[2]))
+        #
+        # if self.resize:
+        #     if self.is_encoder:
+        #         x = tf.nn.avg_pool2d(x, ksize=2, strides=2, padding='SAME')
+        #         skip_x = tf.nn.avg_pool2d(skip_x, ksize=2, strides=2, padding='SAME')
+        #     else:
+        #         x = tf.image.resize(x, (x.shape[1] * 2, x.shape[2] * 2))
+        #         skip_x = tf.image.resize(skip_x, (x.shape[1], x.shape[2]))
 
         return skip_x + x
 
