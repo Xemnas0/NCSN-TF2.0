@@ -9,6 +9,8 @@ import toytrain
 import train
 import utils
 
+import celeb_a_statistics
+
 utils.manage_gpu_memory_usage()
 
 EXPERIMENTS = {
