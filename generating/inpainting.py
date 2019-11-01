@@ -77,7 +77,7 @@ def inpaint_x(model, sigmas, m, x, eps=2 * 1e-5, T=100):
 
     for i, sigma_i in enumerate(sigmas):
         alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
-        z = tf.random.normal(shape=x.shape, mean=0, stddev=sigma_i ** 2)
+        z = tf.random.normal(shape=x.shape, mean=0, stddev=sigma_i)
         y = (x + z) * m
         x_t = x_t * (1 - m) + y
         idx_sigmas = tf.ones(x.shape[0], dtype=tf.int32) * i
@@ -105,13 +105,11 @@ def main():
         os.makedirs(samples_directory)
 
     # initialise sigmas
-    sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
-                                           tf.math.log(configs.config_values.sigma_low),
-                                           configs.config_values.num_L))
+    sigma_levels = utils.get_sigma_levels()
 
     # TODO add these values to args
     N_to_occlude = 10  # number of images to occlude
-    n_reconstructions = 10  # number of samples to generate for each occluded image
+    n_reconstructions = 8  # number of samples to generate for each occluded image
     mask_style = 'vertical_split'  # what kind of occlusion to use
     # mask_style = 'middle'  # what kind of occlusion to use
 
@@ -142,7 +140,7 @@ def main():
 
     reconstructions = [[] for i in range(N_to_occlude)]
     for j in tqdm(range(n_reconstructions)):
-        samples_j = inpaint_x(model, sigma_levels, mask, data, T=50)
+        samples_j = inpaint_x(model, sigma_levels, mask, data, T=100)
         samples_j = _preprocess_image_to_save(samples_j)
         for i, reconstruction in enumerate(samples_j):
             reconstructions[i].append(reconstruction)
@@ -151,7 +149,7 @@ def main():
     for i in range(N_to_occlude):
         images.append([data[i] * mask, reconstructions[i], data[i]])
 
-    save_as_grid(images, samples_directory + '/grid.png')
+    save_as_grid(images, samples_directory + '/grid.png', spacing=5)
 
     # for i, x in enumerate(data):
     #     occluded_x = x * mask
