@@ -187,13 +187,11 @@ def main():
     model, optimizer, step = utils.try_load_model(save_dir, step_ckpt=configs.config_values.resume_from, verbose=True)
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
-    sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
-                                           tf.math.log(configs.config_values.sigma_low),
-                                           configs.config_values.num_L))
+    sigma_levels = utils.get_sigma_levels()
 
     samples_directory = './samples/{}_{}_step{}/'.format(start_time, complete_model_name, step)
 
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 
-    sample_and_save(model, sigma_levels, n_images=12, T=100, save_directory=samples_directory)
+    sample_and_save(model, sigma_levels, n_images=100, T=100, eps=2*10e-5, save_directory=samples_directory)
