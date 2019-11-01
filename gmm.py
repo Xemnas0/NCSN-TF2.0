@@ -128,15 +128,15 @@ def train(gmm, batch_size, total_steps):
 @tf.function
 def langevin_dynamics(grad_function, gmm, x, sigma_i=None, alpha=0.1, T=1000):
     for t in range(T):
-        z_t = tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)
-        noise = tf.sqrt(alpha) * z_t
-        x = x + alpha / 2 * grad_function(gmm, x, sigma_i) + noise
+        score = grad_function(gmm, x, sigma_i)
+        noise = tf.sqrt(alpha) * tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)
+        x = x + (alpha / 2) * score + noise
     return x
 
 
 def annealed_langevin_dynamics(grad_function, gmm, x, sigmas, eps=0.1, T=100):
     for i, sigma_i in enumerate(sigmas):
-        alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
+        alpha_i = eps * (sigma_i ** 2) / (sigmas[-1] ** 2)
         x = langevin_dynamics(grad_function, gmm, x, sigma_i=sigma_i, alpha=alpha_i, T=T)
     return x
 
@@ -180,14 +180,47 @@ if __name__ == "__main__":
     #
     # # annealed Langevin dynamics
     # # TODO: THEY REPORT DIFFERENT LOW_SIGMA IN THE PAPER, IT DOESN'T WORK WITH WHAT THEY PROVIDE
-    # sigma_levels = tf.math.exp(tf.linspace(tf.math.log(10.0), tf.math.log(0.1), 10))
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(10.0), tf.math.log(0.1), 10))
+    # sigma_levels = tf.math.exp(tf.linspace(tf.math.log(5.0), tf.math.log(0.1), 10))
+    # sigma_levels = np.linspace(10, 0.1, 10)
+    # sigma_levels = tf.convert_to_tensor(sigma_levels, dtype=tf.float32)
 
     # sigma_levels = tf.clip_by_value(sigma_levels, 0.1, 10.0)
-    # print(sigma_levels)
+    print(sigma_levels)
+
+
     #
-    # samples_annealed_langevin = annealed_langevin_dynamics(analytic_log_prob_grad, gmm, x_init, sigma_levels, eps=4*0.00001)
-    # visualize_samples(samples_annealed_langevin, "samples_annealed_langevin_4e10-4")
+
+    # epsilons = [10e-2, 10e-3, 10e-4, 10e-5, 10e-6, 10e-7]
+    epsilons = [6*10e-6, 5.5*10e-6, 5*10e-6, 4.5*10e-6, 4*10e-6]
+    #
+    samples = []
+    #
+    for epsilon in epsilons:
+        print(epsilon)
+        samples.append(annealed_langevin_dynamics(analytic_log_prob_grad, gmm, x_init, sigma_levels, T=100, eps=epsilon))
+    #
+    # colors = ["#F7D242", "#F89111", "#D24942", "#842069", "#3B0C5C"]
+    fig, ax = plt.subplots(1, len(epsilons), sharey=True, figsize=(13, 3))
+    #
+    for i in range(len(samples)):
+        ax[i].scatter(samples[i].numpy()[:, 0], samples[i].numpy()[:, 1], s=0.5, marker='.', color='black')
+    #
+    ax[0].set_ylabel(r'$y$')
+    ax[0].set_ylim(-10, 10)
+    #
+    for i, a in enumerate(ax):
+        a.set_aspect('equal', 'box')
+        a.set_xlabel(r'$x$')
+        a.set_xlim(-10, 10)
+        # a.set_ylim(-10, 10)
+        a.set_title(r'$\epsilon=$'+'{0:.0e}'.format(epsilons[i]))
+
+    # plt.savefig("samples_eps_linear_2.pdf", bbox_inches="tight")
+    plt.show()
+
+
+    # visualize_samples(samples_annealed_langevin, "samples_annealed_langevin_test_2")
     #
     # # # annealed Langevin dynamics
     # # # TODO: THEY REPORT DIFFERENT LOW_SIGMA IN THE PAPER, IT DOESN'T WORK WITH WHAT THEY PROVIDE
