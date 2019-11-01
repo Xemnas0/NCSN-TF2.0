@@ -17,7 +17,8 @@ from generating.generate import sample_many_and_save
 from model.inception import Metrics
 
 stat_files = {
-    "cifar10": "./statistics/fid_stats_cifar10_train.npz"
+    "cifar10": "./statistics/fid_stats_cifar10_train.npz",
+    "celeb_a": "./statistics/fid_stats_celeb_a_train.npz"
 }
 
 
