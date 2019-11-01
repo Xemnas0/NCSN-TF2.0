@@ -32,7 +32,7 @@ def _preprocess_celeb_a(data, random_flip=True):
     # Rescale
     data = data.map(lambda x: x / 255, num_parallel_calls=AUTOTUNE)
     # Maybe cache in memory
-    data = data.cache()
+    # data = data.cache()
     # Randomly flip
     if random_flip:
         data = data.map(lambda x: tf.image.random_flip_left_right(x), num_parallel_calls=AUTOTUNE)
@@ -41,7 +41,7 @@ def _preprocess_celeb_a(data, random_flip=True):
 
 def get_celeb_a(random_flip=True):
     batch_size = configs.config_values.batch_size
-    data_generators = tfds.load(name='celeb_a', batch_size=batch_size, data_dir="data", shuffle_files=False)
+    data_generators = tfds.load(name='celeb_a', batch_size=batch_size, data_dir="data", shuffle_files=True)
     train = data_generators['train']
     test = data_generators['test']
     train = _preprocess_celeb_a(train, random_flip=random_flip)
@@ -60,10 +60,14 @@ def get_train_test_data(dataset_name):
 
 
 def get_data_inpainting(dataset_name, n):
-    data_generator = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", split='train')
-    data = data_generator['image']
-    data = tf.random.shuffle(data, seed=1000)
-    data = data[:n] / 255
+    if dataset_name == 'celeb_a':
+        data = get_celeb_a(random_flip=False)[0]
+        data = next(iter(data.take(1)))[:n]
+    else:
+        data_generator = tfds.load(name=dataset_name, batch_size=-1, data_dir="data", split='train', shuffle_files=True)
+        data = data_generator['image']
+        data = tf.random.shuffle(data, seed=1000)
+        data = data[:n] / 255
     return data
 
 
