@@ -5,8 +5,6 @@ import tensorflow.keras.layers as layers
 from model.layers import ConditionalInstanceNormalizationPlusPlus2D
 
 
-
-
 # TODO these can be merged! the only difference is the type of convolution and normalisation (and one takes also sigmas)
 
 class ResNet(keras.Model):
@@ -16,15 +14,15 @@ class ResNet(keras.Model):
         self.increase_channels = layers.Conv2D(filters, kernel_size=3, padding='same')
 
         self.res_enc1 = ConditionalResidualBlock(activation, filters, is_encoder=True)
-        self.res_enc2 = ConditionalResidualBlock(activation, filters * 2, dilation = 2, is_encoder=True, resize=True)
-        self.res_enc3 = ConditionalResidualBlock(activation, filters * 2, dilation = 2, is_encoder=True)
-        self.res_enc4 = ConditionalResidualBlock(activation, filters * 4, dilation = 2, is_encoder=True, resize=True)
-        self.res_enc5 = ConditionalResidualBlock(activation, filters * 4, dilation = 2, is_encoder=True)
+        self.res_enc2 = ConditionalResidualBlock(activation, filters * 2, dilation=2, is_encoder=True, resize=True)
+        self.res_enc3 = ConditionalResidualBlock(activation, filters * 2, dilation=2, is_encoder=True)
+        self.res_enc4 = ConditionalResidualBlock(activation, filters * 4, dilation=2, is_encoder=True, resize=True)
+        self.res_enc5 = ConditionalResidualBlock(activation, filters * 4, dilation=2, is_encoder=True)
 
-        self.res_dec1 = ConditionalResidualBlock(activation, filters * 4, dilation = 2, is_encoder=False)
-        self.res_dec2 = ConditionalResidualBlock(activation, filters * 4, dilation = 2, is_encoder=False, resize=True)
-        self.res_dec3 = ConditionalResidualBlock(activation, filters * 2, dilation = 2, is_encoder=False)
-        self.res_dec4 = ConditionalResidualBlock(activation, filters * 2, dilation = 2, is_encoder=False, resize=True)
+        self.res_dec1 = ConditionalResidualBlock(activation, filters * 4, dilation=2, is_encoder=False)
+        self.res_dec2 = ConditionalResidualBlock(activation, filters * 4, dilation=2, is_encoder=False, resize=True)
+        self.res_dec3 = ConditionalResidualBlock(activation, filters * 2, dilation=2, is_encoder=False)
+        self.res_dec4 = ConditionalResidualBlock(activation, filters * 2, dilation=2, is_encoder=False, resize=True)
         self.res_dec5 = ConditionalResidualBlock(activation, filters, is_encoder=False)
 
         self.norm = ConditionalInstanceNormalizationPlusPlus2D()
@@ -73,8 +71,10 @@ class ConditionalResidualBlock(layers.Layer):
             self.conv1 = layers.Conv2D(filters, kernel_size, dilation_rate=(dilation, dilation), padding="same")
             self.conv2 = layers.Conv2D(filters, kernel_size, dilation_rate=(dilation, dilation), padding="same")
         else:
-            self.conv1 = layers.Conv2DTranspose(filters, kernel_size, dilation_rate=(dilation, dilation), padding="same")
-            self.conv2 = layers.Conv2DTranspose(filters, kernel_size, dilation_rate=(dilation, dilation), padding="same")
+            self.conv1 = layers.Conv2DTranspose(filters, kernel_size, dilation_rate=(dilation, dilation),
+                                                padding="same")
+            self.conv2 = layers.Conv2DTranspose(filters, kernel_size, dilation_rate=(dilation, dilation),
+                                                padding="same")
         self.adjust_skip = None
 
     def build(self, input_shape):
@@ -110,9 +110,6 @@ class ConditionalResidualBlock(layers.Layer):
         return skip_x + x
 
 
-
-
-
 class ToyResNet(keras.Model):
 
     def __init__(self, activation):
@@ -129,9 +126,9 @@ class ToyResNet(keras.Model):
         self.res_enc5 = ResidualBlock(activation, 128, is_encoder=True)
 
         self.res_dec1 = ResidualBlock(activation, 128, is_encoder=False)
-        self.res_dec2 = ResidualBlock(activation, 128, is_encoder=False, resize=True)
+        self.res_dec2 = ResidualBlock(activation, 64, is_encoder=False, resize=True)
         self.res_dec3 = ResidualBlock(activation, 64, is_encoder=False)
-        self.res_dec4 = ResidualBlock(activation, 64, is_encoder=False, resize=True)
+        self.res_dec4 = ResidualBlock(activation, 32, is_encoder=False, resize=True)
         self.res_dec5 = ResidualBlock(activation, 32, is_encoder=False)
 
         # TODO: SEE (1).
@@ -185,27 +182,29 @@ class ResidualBlock(layers.Layer):
             self.conv1 = layers.Conv2DTranspose(filters, kernel_size, strides=1, padding='same')
             self.conv2 = layers.Conv2DTranspose(filters, kernel_size, strides=strides, padding=padding)
 
-        self.increase_channels_skip = layers.Conv2D(filters, kernel_size=1, strides=strides, padding=padding)
-
     def build(self, input_shape):
-        self.increase_skip_size = layers.Conv2D(self.filters, kernel_size=1, strides=2)
+        self.increase_skip_size = layers.Conv2D(self.filters, kernel_size=1, strides=2, padding='same')
         self.decrease_skip_size = layers.Conv2DTranspose(self.filters, kernel_size=1, strides=self.strides)
 
     def call(self, inputs, **kwargs):
-        x = self.norm1(inputs)
-        x = self.activation(x)
-        x = self.conv1(x)
-        x = self.norm2(x)
+        # x = self.norm1(inputs)
+        # x = self.activation(x)
+        # x = self.conv1(x)
+        # x = self.norm2(x)
+        # x = self.activation(x)
+        # x = self.conv2(x)
+        x = self.conv1(inputs)
+        x = self.norm1(x)
         x = self.activation(x)
         x = self.conv2(x)
+        x = self.norm2(x)
 
         if x.shape != inputs.shape:
             if self.is_encoder:
-                skip_x = self.increase_channels_skip(inputs)
+                skip_x = self.increase_skip_size(inputs)
             else:
                 skip_x = self.decrease_skip_size(inputs)
         else:
             skip_x = inputs
 
-        return skip_x + x
-
+        return self.activation(skip_x + x)
