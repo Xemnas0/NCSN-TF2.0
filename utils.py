@@ -17,7 +17,7 @@ dict_datasets_image_size = {
 
 
 def find_k_closest(image, k, data_as_array):
-    l2_distances = tf.reduce_sum(tf.square(data_as_array - image), axis=[1,2,3])
+    l2_distances = tf.reduce_sum(tf.square(data_as_array - image), axis=[1, 2, 3])
     _, smallest_idx = tf.math.top_k(-l2_distances, k)
     closest_k = tf.gather(data_as_array, smallest_idx[:k])
     return closest_k, smallest_idx[:k]
@@ -29,7 +29,6 @@ def get_dataset_image_size(dataset_name):
 
 def check_args_validity(args):
     assert args.model in ["baseline", "resnet", "refinenet", "refinenet_twores"]
-
 
 
 def get_command_line_args():
@@ -171,6 +170,28 @@ def try_load_model(save_dir, step_ckpt=-1, return_new_model=True, verbose=True):
     evaluate_print_model_summary(model, verbose)
 
     return model, optimizer, step
+
+
+def get_sigma_levels():
+    if configs.config_values.model == 'baseline':
+        sigma_levels = tf.ones(1) * configs.config_values.sigma_low
+    elif configs.config_values.sigma_sequence == 'linear':
+        sigma_levels = tf.linspace(configs.config_values.sigma_high,
+                                   configs.config_values.sigma_low,
+                                   configs.config_values.num_L)
+    elif configs.config_values.sigma_sequence == 'geometric':
+        sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
+                                               tf.math.log(configs.config_values.sigma_low),
+                                               configs.config_values.num_L))
+    elif configs.config_values.sigma_sequence == 'hybrid':
+        sigma_levels_geometric = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
+                                                         tf.math.log(configs.config_values.sigma_low),
+                                                         configs.config_values.num_L))
+        sigma_levels_linear = tf.linspace(configs.config_values.sigma_high,
+                                          configs.config_values.sigma_low,
+                                          configs.config_values.num_L)
+        sigma_levels = (sigma_levels_geometric + sigma_levels_linear) / 2
+    return sigma_levels
 
 
 def manage_gpu_memory_usage():
