@@ -10,6 +10,7 @@ import configs
 import utils
 from datasets.dataset_loader import get_data_inpainting
 from generating.generate import _preprocess_image_to_save
+
 utils.manage_gpu_memory_usage()
 
 
@@ -67,8 +68,8 @@ def save_image(image, filename):
 def inpaint_one_step(model, x_t, idx_sigmas, alpha_i):
     z_t = tf.random.normal(shape=x_t.shape, mean=0, stddev=1.0)
     score = model([x_t, idx_sigmas])
-    noise = tf.sqrt(2*alpha_i) * z_t
-    return x_t + alpha_i  * score + noise
+    noise = tf.sqrt(2 * alpha_i) * z_t
+    return x_t + alpha_i * score + noise
 
 
 def inpaint_x(model, sigmas, m, x, eps=2 * 1e-5, T=100):
@@ -110,7 +111,7 @@ def main():
     # TODO add these values to args
     N_to_occlude = 10  # number of images to occlude
     n_reconstructions = 8  # number of samples to generate for each occluded image
-    mask_style = 'vertical_split'  # what kind of occlusion to use
+    mask_style = 'horizontal_up'  # what kind of occlusion to use
     # mask_style = 'middle'  # what kind of occlusion to use
 
     # load data for inpainting (currently always N first data points from test data)
@@ -120,13 +121,17 @@ def main():
 
     mask = np.zeros(data.shape[1:])
     if mask_style == 'vertical_split':
-        mask[:, :data.shape[1] // 2, :] += 1  # set left side to ones
+        mask[:, :data.shape[2] // 2, :] += 1  # set left side to ones
     if mask_style == 'middle':
-        fifth = data.shape[1] // 5
+        fifth = data.shape[2] // 5
         mask[:, :2 * fifth, :] += 1  # set stripe in the middle to ones
         mask[:, -(2 * fifth):, :] += 1  # set stripe in the middle to ones
     elif mask_style == 'checkerboard':
         mask[::2, ::2, :] += 1  # set every other value to ones
+    elif mask_style == 'horizontal_down':
+        mask[:data.shape[1] // 2, :, :] += 1
+    elif mask_style == 'horizontal_up':
+        mask[data.shape[1] // 2:, :, :] += 1
     else:
         pass  # TODO add options here
 
