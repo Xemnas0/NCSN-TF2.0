@@ -47,9 +47,8 @@ def main():
     model, optimizer, step = utils.try_load_model(save_dir, step_ckpt=configs.config_values.resume_from, verbose=True)
     start_time = datetime.now().strftime("%y%m%d-%H%M%S")
 
-    sigma_levels = tf.math.exp(tf.linspace(tf.math.log(configs.config_values.sigma_high),
-                                           tf.math.log(configs.config_values.sigma_low),
-                                           configs.config_values.num_L))
+    sigma_levels = utils.get_sigma_levels()
+
     k = configs.config_values.k
     samples_directory = './samples/{}_{}_step{}_{}nearest/'.format(start_time, complete_model_name, step, k)
 
