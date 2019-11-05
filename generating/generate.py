@@ -156,7 +156,7 @@ def sample_many_and_save(model, sigmas, batch_size=128, eps=2 * 1e-5, T=100, n_i
                 idx_image += 1
 
 
-def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directory=None):
+def sample_and_save(model, sigmas, x=None, eps=2 * 1e-5, T=100, n_images=1, save_directory=None):
     """
     :param model:
     :param sigmas:
@@ -169,7 +169,8 @@ def sample_and_save(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directo
 
     image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
 
-    x = tf.random.uniform(shape=image_size)
+    if x is None:
+        x = tf.random.uniform(shape=image_size)
 
     for i, sigma_i in enumerate(tqdm(sigmas, desc='Sampling for each sigma')):
         alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
@@ -194,4 +195,4 @@ def main():
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 
-    sample_and_save(model, sigma_levels, n_images=100, T=100, eps=2*10e-5, save_directory=samples_directory)
+    sample_and_save(model, sigma_levels, n_images=100, T=100, eps=2*1e-5, save_directory=samples_directory)
