@@ -38,8 +38,6 @@ def get_command_line_args():
                         help="tfds name of dataset (default: 'mnist')")
     parser.add_argument('--model', default='refinenet',
                         help="Model to use. Can be \'refinenet\', \'resnet\', \'baseline\' (default: refinenet)")
-    # parser.add_argument('--baseline', action='store_true',
-    #                     help='whether to run baseline experiment with only one sigma (default: False)')
     parser.add_argument('--filters', default=128, type=int,
                         help='number of filters in the model. (default: 128)')
     parser.add_argument('--num_L', default=10, type=int,
@@ -66,10 +64,10 @@ def get_command_line_args():
                         help="whether to resume from latest checkpoint (default: True)")
     parser.add_argument('--resume_from', default=-1, type=int,
                         help='Step of checkpoint where to resume the model from. (default: latest one)')
+    parser.add_argument('--init_samples', default="",
+                        help="Folder with images to be used as x0 for sampling with annealed langevin dynamics")
     parser.add_argument('--k', default=10, type=int,
                         help='number of nearest neighbours to find from data (default: 10)')
-    # parser.add_argument('--resnet', action='store_true',
-    #                     help='whether to run the experiment with ResNet architecture (default: False)')
     parser.add_argument('--eval_setting', default="sample", type=str,
                         help="can be \'sample\' or \'fid\' (default: sample)")
 
