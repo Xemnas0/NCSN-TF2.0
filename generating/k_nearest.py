@@ -6,7 +6,7 @@ from PIL import Image
 
 import configs
 import utils
-from datasets.dataset_loader import get_celeb_a, get_data_k_nearest
+from datasets.dataset_loader import get_celeb_a32, get_data_k_nearest
 from generating.generate import sample_many
 
 
@@ -56,12 +56,12 @@ def main():
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 
-    n_images = 20  # TODO make this not be hard-coded
+    n_images = 10  # TODO make this not be hard-coded
     samples = sample_many(model, sigma_levels, batch_size=configs.config_values.batch_size,
                                    T=100, n_images=n_images)
 
     if configs.config_values.dataset == 'celeb_a':
-        data, _ = get_celeb_a(random_flip=False)
+        data = get_celeb_a32()
     else:
         data = get_data_k_nearest(configs.config_values.dataset)
         data = data.batch(int(tf.data.experimental.cardinality(data)))
