@@ -1,5 +1,8 @@
+import os
+
 import tensorflow as tf
 import tensorflow_datasets as tfds
+
 import configs
 
 AUTOTUNE = tf.data.experimental.AUTOTUNE
@@ -48,6 +51,28 @@ def get_celeb_a(random_flip=True):
     test = _preprocess_celeb_a(test, random_flip=False)
     return train, test
 
+
+def get_celeb_a32():
+    """
+    Loads the preprocessed celeb_a dataset scaled down to 32x32
+    :return: tf.data.Dataset with single batch as big as the whole dataset
+    """
+    path = './data/celeb_a32'
+    if not os.path.exists(path):
+        print(path, " does not exits")
+        return None
+    images = []
+    for i, filename in enumerate(os.listdir(path)):
+        image = tf.io.decode_image(tf.io.read_file(path+'/'+filename))
+        images.append(image)
+        if (i+1) % 10000 == 0:
+            print(i)
+
+    images = tf.convert_to_tensor(images)
+    data = tf.data.Dataset.from_tensor_slices(images)
+    data = data.map(lambda x: tf.cast(x, tf.float32))
+    data = data.batch(int(tf.data.experimental.cardinality(data)))
+    return data
 
 def get_train_test_data(dataset_name):
     if dataset_name != 'celeb_a':
