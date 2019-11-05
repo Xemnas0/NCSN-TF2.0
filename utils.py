@@ -1,7 +1,6 @@
 import argparse
+import os
 import re
-from os import listdir
-from os.path import isfile, join
 
 import tensorflow as tf
 
@@ -143,7 +142,7 @@ def try_load_model(save_dir, step_ckpt=-1, return_new_model=True, verbose=True):
             checkpoint = tf.train.latest_checkpoint(save_dir)
         else:
             print("Trying to load checkpoint with step", step_ckpt, " model from " + save_dir)
-            onlyfiles = [f for f in listdir(save_dir) if isfile(join(save_dir, f))]
+            onlyfiles = [f for f in os.listdir(save_dir) if os.path.isfile(os.path.join(save_dir, f))]
             r = re.compile(".*step_{}-.*".format(step_ckpt))
             name_all_checkpoints = sorted(list(filter(r.match, onlyfiles)))
             # Retrieve name of the last checkpoint with that number of steps
@@ -190,6 +189,33 @@ def get_sigma_levels():
                                           configs.config_values.num_L)
         sigma_levels = (sigma_levels_geometric + sigma_levels_linear) / 2
     return sigma_levels
+
+
+def get_init_samples():
+    if configs.config_values.init_samples == "":
+        return None
+
+    path = configs.config_values.init_samples
+    if not os.path.exists(path):
+        raise ValueError("Path ", path, " does not exist.")
+
+    images = get_tensor_images_from_path(path)
+    size = max(images.shape[1], images.shape[2])
+    if size > 140:
+        images = tf.image.resize_with_crop_or_pad(images, 140, 140)
+    if size != 32:
+        images = tf.image.resize(images, (32, 32))
+    images /= 255
+    return images
+
+
+def get_tensor_images_from_path(path):
+    images = []
+    for i, filename in enumerate(os.listdir(path)):
+        image = tf.io.decode_image(tf.io.read_file(path + '/' + filename))
+        images.append(image)
+
+    return tf.convert_to_tensor(images)
 
 
 def manage_gpu_memory_usage():
