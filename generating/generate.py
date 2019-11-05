@@ -167,10 +167,12 @@ def sample_and_save(model, sigmas, x=None, eps=2 * 1e-5, T=100, n_images=1, save
     if not os.path.exists(save_directory):
         os.makedirs(save_directory)
 
-    image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
-
     if x is None:
-        x = tf.random.uniform(shape=image_size)
+        image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
+        x = tf.random.uniform(shape=image_size)*0
+    else:
+        image_size = x.shape
+        n_images = image_size[0]
 
     for i, sigma_i in enumerate(tqdm(sigmas, desc='Sampling for each sigma')):
         alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
@@ -195,4 +197,5 @@ def main():
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
 
-    sample_and_save(model, sigma_levels, n_images=100, T=100, eps=2*1e-5, save_directory=samples_directory)
+    x0 = utils.get_init_samples()
+    sample_and_save(model, sigma_levels, x=x0, n_images=100, T=100, eps=2*1e-5, save_directory=samples_directory)

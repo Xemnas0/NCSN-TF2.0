@@ -9,7 +9,7 @@ import utils
 from generating.generate import sample_one_step, save_as_grid
 
 
-def sample_and_save_intermediate(model, sigmas, eps=2 * 1e-5, T=100, n_images=1, save_directory=None):
+def sample_and_save_intermediate(model, sigmas, x=None, eps=2 * 1e-5, T=100, n_images=1, save_directory=None):
     """
     :param model:
     :param sigmas:
@@ -20,9 +20,13 @@ def sample_and_save_intermediate(model, sigmas, eps=2 * 1e-5, T=100, n_images=1,
     if not os.path.exists(save_directory):
         os.makedirs(save_directory)
 
-    image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
+    if x is None:
+        image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
+        x = tf.random.uniform(shape=image_size)
+    else:
+        image_size = x.shape
+        n_images = image_size[0]
 
-    x = tf.random.uniform(shape=image_size)
     x_all = None
     for i, sigma_i in enumerate(tqdm(sigmas, desc='Sampling for each sigma')):
         alpha_i = eps * (sigma_i / sigmas[-1]) ** 2
@@ -52,5 +56,6 @@ def main():
 
     if not os.path.exists(samples_directory):
         os.makedirs(samples_directory)
-
-    sample_and_save_intermediate(model, sigma_levels, eps=2 * 1e-5, T=100, n_images=5, save_directory=samples_directory)
+    x0 = utils.get_init_samples()
+    sample_and_save_intermediate(model, sigma_levels, x=x0, eps=2 * 1e-5, T=100, n_images=5,
+                                 save_directory=samples_directory)

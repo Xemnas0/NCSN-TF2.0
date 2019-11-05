@@ -200,19 +200,25 @@ def get_init_samples():
         raise ValueError("Path ", path, " does not exist.")
 
     images = get_tensor_images_from_path(path)
-    size = max(images.shape[1], images.shape[2])
-    if size > 140:
-        images = tf.image.resize_with_crop_or_pad(images, 140, 140)
-    if size != 32:
-        images = tf.image.resize(images, (32, 32))
+
     images /= 255
     return images
 
 
-def get_tensor_images_from_path(path):
+def get_tensor_images_from_path(path, resize=True):
     images = []
     for i, filename in enumerate(os.listdir(path)):
         image = tf.io.decode_image(tf.io.read_file(path + '/' + filename))
+        if resize:
+            size = max(image.shape[0], image.shape[1])
+            is_square = image.shape[0] == image.shape[1]
+            if not is_square:
+                min_size = min(image.shape[0], image.shape[1])
+                image = tf.image.resize_with_crop_or_pad(image, min_size, min_size)
+                size = min_size
+                is_square = True
+            if size != 32 and is_square:
+                image = tf.image.resize(image, (32, 32))
         images.append(image)
 
     return tf.convert_to_tensor(images)
