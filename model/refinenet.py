@@ -11,31 +11,21 @@ class RefineNet(keras.Model):
         super(RefineNet, self).__init__()
         self.in_shape = None
 
-        self.increase_channels = layers.Conv2D(filters, kernel_size=3,
-                                               padding='same')  # TODO: (1) not mentioned in the paper. Can we assume it's understood we should have it?
+        self.increase_channels = layers.Conv2D(filters, kernel_size=3, padding='same')
 
-        # TODO: They never say what the kernel_size is (see RefineNet for this? They are using 1 and 3.)
-
-        # TODO: (I HAVE A QUESTION HERE): "use dilated conv to replace the subsampling layers EXCEPT the first one.
-        #  ==> First one should be subsampling, but it's not? So, pooling = True in the preact_1 and dilations 2, 4, 6
-        #  in others (note: dilation does not change the size of the image as we thought before, so this might be ok?)
-        # TODO: If the first block is subsampling, then it should not have dilated according to their description ("REPLACE").
         self.preact_1 = ConditionalFullPreActivationBlock(activation, filters, kernel_size=3)
         self.preact_2 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, pooling=True)
         self.preact_3 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=2, padding=2)
         self.preact_4 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=4, padding=4)
-        # Increasing the dilation even more would not help - WHY THOUGH? Antonio, 24/10/2019
 
-        # TODO: THEY DON'T SAY HOW MANY RCU BLOCKS TO USE? WHY DO WE HAVE 2 HERE?
-        # TODO: NUMBER OF CRP BLOCKS TAKEN FROM RefineNet.
         self.refine_block_1 = RefineBlock(activation, filters, n_blocks_crp=2, n_blocks_begin_rcu=2, n_blocks_end_rcu=3)
         self.refine_block_2 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_begin_rcu=2)
         self.refine_block_3 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_begin_rcu=2)
         self.refine_block_4 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_begin_rcu=2)
 
         self.norm = ConditionalInstanceNormalizationPlusPlus2D()
-        self.activation = activation  # TODO: This isn't mentioned in the paper.
-        self.decrease_channels = None  # TODO: Neither is this, see (1).
+        self.activation = activation
+        self.decrease_channels = None
 
     def build(self, input_shape):
         # Here we get the depth of the image that is passed to the model at the start, i.e. 1 for MNIST.
@@ -74,20 +64,14 @@ class RefineNetTwoResidual(keras.Model):
         super(RefineNetTwoResidual, self).__init__()
         self.in_shape = None
 
-        self.increase_channels = layers.Conv2D(filters, kernel_size=3,
-                                               padding='same')  # TODO: (1) not mentioned in the paper. Can we assume it's understood we should have it?
-
-        # TODO: They never say what the kernel_size is (see RefineNet for this? They are using 1 and 3.)
-
-        # TODO: (I HAVE A QUESTION HERE): "use dilated conv to replace the subsampling layers EXCEPT the first one.
-        #  ==> First one should be subsampling, but it's not? So, pooling = True in the preact_1 and dilations 2, 4, 6
-        #  in others (note: dilation does not change the size of the image as we thought before, so this might be ok?)
-        # TODO: If the first block is subsampling, then it should not have dilated according to their description ("REPLACE").
+        self.increase_channels = layers.Conv2D(filters, kernel_size=3, padding='same')
 
         self.preact_1_1 = ConditionalFullPreActivationBlock(activation, filters, kernel_size=3)
         self.preact_1_2 = ConditionalFullPreActivationBlock(activation, filters, kernel_size=3)
+        # FIXME: In this second preactivation block we used dilation=1, but it should have been 2
         self.preact_2_1 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3)
         self.preact_2_2 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, pooling=True)
+
         self.preact_3_1 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=2,
                                                             padding=2)
         self.preact_3_2 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=2,
@@ -97,18 +81,14 @@ class RefineNetTwoResidual(keras.Model):
         self.preact_4_2 = ConditionalFullPreActivationBlock(activation, filters * 2, kernel_size=3, dilation=4,
                                                             padding=4)
 
-        # Increasing the dilation even more would not help - WHY THOUGH? Antonio, 24/10/2019
-
-        # TODO: THEY DON'T SAY HOW MANY RCU BLOCKS TO USE? WHY DO WE HAVE 2 HERE?
-        # TODO: NUMBER OF CRP BLOCKS TAKEN FROM RefineNet.
         self.refine_block_1 = RefineBlock(activation, filters, n_blocks_crp=2, n_blocks_begin_rcu=2, n_blocks_end_rcu=3)
         self.refine_block_2 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_begin_rcu=2)
         self.refine_block_3 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_begin_rcu=2)
         self.refine_block_4 = RefineBlock(activation, filters * 2, n_blocks_crp=2, n_blocks_begin_rcu=2)
 
         self.norm = ConditionalInstanceNormalizationPlusPlus2D()
-        self.activation = activation  # TODO: This isn't mentioned in the paper.
-        self.decrease_channels = None  # TODO: Neither is this, see (1).
+        self.activation = activation
+        self.decrease_channels = None
 
     def build(self, input_shape):
         # Here we get the depth of the image that is passed to the model at the start, i.e. 1 for MNIST.

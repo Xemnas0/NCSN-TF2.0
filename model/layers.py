@@ -23,6 +23,9 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         super(ConditionalFullPreActivationBlock, self).__init__()
 
         self.norm1 = ConditionalInstanceNormalizationPlusPlus2D()
+        # FIXME: The number of filters in this convolution should be equal
+        # to the input depth, instead of "filters"
+        # The depth is increased only in the conv2
         self.conv1 = DilatedConv2D(filters, kernel_size, dilation, padding)
         self.norm2 = ConditionalInstanceNormalizationPlusPlus2D()
         self.conv2 = DilatedConv2D(filters, kernel_size, dilation, padding)
@@ -51,6 +54,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
             skip_x = self.increase_channels_skip(skip_x)
 
         if self.pooling:
+            # FIXME: In the original code, there is a convolution before this pooling
             x = tf.nn.avg_pool2d(x, ksize=2, strides=2, padding='SAME')
             skip_x = tf.nn.avg_pool2d(skip_x, ksize=2, strides=2, padding='SAME')
 
@@ -67,6 +71,7 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
         super(ConditionalInstanceNormalizationPlusPlus2D, self).__init__()
         self.L = configs.config_values.num_L
 
+        # FIXME: Here we initialize with ones instead of random normal around 1
         self.init_weights = 'ones'  # tf.random_normal_initializer(1, 0.02)
         self.init_bias = 'zeros'
 
