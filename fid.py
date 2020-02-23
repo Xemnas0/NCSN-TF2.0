@@ -26,10 +26,11 @@ import gzip, pickle
 # import tensorflow as tf
 from imageio import imread
 from scipy import linalg
+from tqdm import tqdm
 import pathlib
 import urllib
 import warnings
-
+from model.inception import Metrics
 import tensorflow.compat.v1 as tf_1
 
 
@@ -89,6 +90,8 @@ def get_activations(images, sess, batch_size=50, verbose=False):
     -- A numpy array of dimension (num images, 2048) that contains the
        activations of the given tensor when feeding inception with the query tensor.
     """
+    verbose=True
+    print("Computing activations")
     inception_layer = _get_inception_layer(sess)
     d0 = images.shape[0]
     if batch_size > d0:
@@ -97,7 +100,7 @@ def get_activations(images, sess, batch_size=50, verbose=False):
     n_batches = d0 // batch_size
     n_used_imgs = n_batches * batch_size
     pred_arr = np.empty((n_used_imgs, 2048))
-    for i in range(n_batches):
+    for i in tqdm(range(n_batches)):
         if verbose:
             print("\rPropagating batch %d/%d" % (i + 1, n_batches), end="", flush=True)
         start = i * batch_size
@@ -231,7 +234,7 @@ def get_activations_from_files(files, sess, batch_size=50, verbose=False):
     n_batches = d0 // batch_size
     n_used_imgs = n_batches * batch_size
     pred_arr = np.empty((n_used_imgs, 2048))
-    for i in range(n_batches):
+    for i in tqdm(range(n_batches)):
         if verbose:
             print("\rPropagating batch %d/%d" % (i + 1, n_batches), end="", flush=True)
         start = i * batch_size
@@ -304,7 +307,9 @@ def _handle_path(path, sess, low_profile=False):
             m, s = calculate_activation_statistics_from_files(files, sess)
         else:
             x = np.array([imread(str(fn)).astype(np.float32) for fn in files])
-            m, s = calculate_activation_statistics(x, sess)
+            # m, s = calculate_activation_statistics(x, sess)
+            metrics = Metrics()
+            m, s = metrics.compute_mu_sigma(x)
             del x  # clean up memory
     return m, s
 
@@ -318,15 +323,16 @@ def calculate_fid_given_paths(paths, inception_path, low_profile=False):
             raise RuntimeError("Invalid path: %s" % p)
 
     create_inception_graph(str(inception_path))
+    m1, s1 = _handle_path(paths[0], None, low_profile=low_profile)
+
     with tf_1.Session() as sess:
         sess.run(tf_1.global_variables_initializer())
-        m1, s1 = _handle_path(paths[0], sess, low_profile=low_profile)
         m2, s2 = _handle_path(paths[1], sess, low_profile=low_profile)
         fid_value = calculate_frechet_distance(m1, s1, m2, s2)
         return fid_value
 
 def main(path1, path2, gpu="GPU:0", inception_model_path=None, low_profile=False):
-    tf_1.disable_v2_behavior()
+    # tf_1.disable_v2_behavior()
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu
     fid_value = calculate_fid_given_paths([path1, path2], inception_model_path, low_profile=low_profile)
     return fid_value
