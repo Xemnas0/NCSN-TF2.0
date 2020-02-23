@@ -38,7 +38,7 @@ def save_as_grid(images, filename, spacing=2, rows=None):
     cols = n_images // rows
 
     # Process image
-    images = _preprocess_image_to_save(images)
+    # images = _preprocess_image_to_save(images)
 
     # Init image
     grid_cols = rows * height + (rows + 1) * spacing
@@ -169,7 +169,7 @@ def sample_and_save(model, sigmas, x=None, eps=2 * 1e-5, T=100, n_images=1, save
 
     if x is None:
         image_size = (n_images,) + utils.get_dataset_image_size(configs.config_values.dataset)
-        x = tf.random.uniform(shape=image_size)*0
+        x = tf.random.uniform(shape=image_size)
     else:
         image_size = x.shape
         n_images = image_size[0]
