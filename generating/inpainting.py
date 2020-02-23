@@ -132,6 +132,10 @@ def main():
         mask[:data.shape[1] // 2, :, :] += 1
     elif mask_style == 'horizontal_up':
         mask[data.shape[1] // 2:, :, :] += 1
+    elif mask_style =='centered':
+        init_x, init_y = data.shape[1]//4, data.shape[2] // 4
+        mask += 1
+        mask[init_x:3*init_x, init_y:3*init_y, : ] -=1
     else:
         pass  # TODO add options here
 
