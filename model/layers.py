@@ -4,9 +4,6 @@ import tensorflow.keras.layers as layers
 import configs
 
 
-# TODO: A general note: Should we have @tf.function above each function here?
-# TODO: They don't say how they downsample. This should be changed perhaps?
-
 class DilatedConv2D(layers.Layer):
     def __init__(self, filters, kernel_size=3, dilation=1, padding=1, strides=1):
         super(DilatedConv2D, self).__init__()
@@ -51,7 +48,7 @@ class ConditionalFullPreActivationBlock(layers.Layer):
         x = self.conv2(x)
 
         if self.increase_channels_skip is not None:
-            skip_x = self.increase_channels_skip(skip_x)  # TODO: this should be performed before each pooling as well
+            skip_x = self.increase_channels_skip(skip_x)
 
         if self.pooling:
             x = tf.nn.avg_pool2d(x, ksize=2, strides=2, padding='SAME')
@@ -70,8 +67,6 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
         super(ConditionalInstanceNormalizationPlusPlus2D, self).__init__()
         self.L = configs.config_values.num_L
 
-        # self.init_weights = 'random_normal'  # tf.initializers.RandomNormal(1, 0.02)
-        # TODO: This initialization was not give in the paper. Usual practice: bias to zeros, weights to ones
         self.init_weights = 'ones'  # tf.random_normal_initializer(1, 0.02)
         self.init_bias = 'zeros'
 
@@ -102,7 +97,6 @@ class ConditionalInstanceNormalizationPlusPlus2D(layers.Layer):
         return z
 
 
-# TODO: Pooling size taken from RefineNet
 class ConditionalChainedResidualPooling2D(layers.Layer):
     def __init__(self, n_blocks, activation, filters, kernel_size=3, pooling_size=5):
         super(ConditionalChainedResidualPooling2D, self).__init__()
@@ -113,7 +107,6 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
             setattr(self, 'norm1{}'.format(n), ConditionalInstanceNormalizationPlusPlus2D())
             setattr(self, 'conv{}'.format(n), layers.Conv2D(filters, kernel_size, padding='same'))
 
-    # TODO: WHERE IS ACTIVATION? NORM COMES BEFORE EVERY CONV AND POOLING?
     def call(self, inputs, **kwargs):
         x, idx_sigmas = inputs
         x_residual = self.activation1(x)
@@ -129,7 +122,6 @@ class ConditionalChainedResidualPooling2D(layers.Layer):
         return x_residual
 
 
-# TODO: HOW TO DO THE UPSAMPLING? THEY DON'T SAY IT IN THE PAPER
 class MultiResolutionFusion(layers.Layer):
     def __init__(self, filters, kernel_size=3):
         super(MultiResolutionFusion, self).__init__()
