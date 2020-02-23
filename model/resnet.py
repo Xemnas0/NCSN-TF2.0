@@ -4,9 +4,6 @@ import tensorflow.keras.layers as layers
 
 from model.layers import ConditionalInstanceNormalizationPlusPlus2D
 
-
-# TODO these can be merged! the only difference is the type of convolution and normalisation (and one takes also sigmas)
-
 class ResNet(keras.Model):
     def __init__(self, filters, activation):
         super(ResNet, self).__init__()
@@ -115,10 +112,8 @@ class ToyResNet(keras.Model):
     def __init__(self, activation):
         super(ToyResNet, self).__init__()
 
-        # TODO: (1) Again, is this understood?
         self.increase_channels = layers.Conv2D(32, kernel_size=3, padding='same')
 
-        # TODO: THEY DON'T SEY IN THE PAPER HOW THE SUB- AND UPSAMPLING IS DONE? I TOOK STRIDE=2 FROM THEIR CODE.
         self.res_enc1 = ResidualBlock(activation, 32, is_encoder=True)
         self.res_enc2 = ResidualBlock(activation, 64, is_encoder=True, resize=True)
         self.res_enc3 = ResidualBlock(activation, 64, is_encoder=True)
@@ -131,7 +126,6 @@ class ToyResNet(keras.Model):
         self.res_dec4 = ResidualBlock(activation, 32, is_encoder=False, resize=True)
         self.res_dec5 = ResidualBlock(activation, 32, is_encoder=False)
 
-        # TODO: SEE (1).
         self.decrease_channels = None
 
     def build(self, input_shape):

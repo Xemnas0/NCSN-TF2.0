@@ -58,7 +58,7 @@ def save_as_grid(images, filename, spacing=2, rows=None):
 
 @tf.function
 def sample_one_step(model, x, idx_sigmas, alpha_i):
-    z_t = tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)  # TODO: check if stddev is correct
+    z_t = tf.random.normal(shape=x.get_shape(), mean=0, stddev=1.0)
     score = model([x, idx_sigmas])
     noise = tf.sqrt(alpha_i) * z_t
     return x + alpha_i / 2 * score + noise

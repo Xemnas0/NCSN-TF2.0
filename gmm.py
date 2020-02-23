@@ -13,9 +13,9 @@ tfd = tfp.distributions
 def gmm(probs, loc, scale):
     gmm = tfd.MixtureSameFamily(
         mixture_distribution=tfd.Categorical(probs=probs),
-                                             components_distribution=tfd.MultivariateNormalDiag(
-                                                 loc=loc,
-                                                 scale_identity_multiplier=scale))
+        components_distribution=tfd.MultivariateNormalDiag(
+            loc=loc,
+            scale_identity_multiplier=scale))
     return gmm
 
 
@@ -89,7 +89,7 @@ def visualize_gradients(x, grads, filename="gradients"):
     plt.show()
 
 
-def estimated_log_prob_grad(gmm, x_for_grads, batch_size=128, iterations=10000,):
+def estimated_log_prob_grad(gmm, x_for_grads, batch_size=128, iterations=10000, ):
     trained_model = train(gmm, batch_size, iterations)
     est_grads = trained_model(meshgrid(x_for_grads))
     return est_grads
@@ -140,12 +140,13 @@ def annealed_langevin_dynamics(grad_function, gmm, x, sigmas, eps=0.1, T=100):
         x = langevin_dynamics(grad_function, gmm, x, sigma_i=sigma_i, alpha=alpha_i, T=T)
     return x
 
+
 if __name__ == "__main__":
     tf.get_logger().setLevel('ERROR')
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
     # create a GMM (probabilities, cluster centres, cluster scales)
-    gmm = gmm([0.8, 0.2], [[5,5],[-5,-5]], [1,1])
+    gmm = gmm([0.8, 0.2], [[5, 5], [-5, -5]], [1, 1])
 
     # define grids
     # x = np.linspace(-8, 8, 500, dtype=np.float32)
@@ -165,8 +166,6 @@ if __name__ == "__main__":
     # visualize_gradients(x_for_grads, anal_grads, "grad_analytic")
     # visualize_gradients(x_for_grads, estimated_grads, "grad_est")
 
-    #TODO experiment more with this maybe? is there some sort of setup where it doesn't work well anymore?
-
     # exact samples from the mixture
     samples = sample(gmm, 1280)
     # visualize_samples(samples, "real_samples")
@@ -179,7 +178,8 @@ if __name__ == "__main__":
     # visualize_samples(samples_langevin, "samples_langevin")
     #
     # # annealed Langevin dynamics
-    # # TODO: THEY REPORT DIFFERENT LOW_SIGMA IN THE PAPER, IT DOESN'T WORK WITH WHAT THEY PROVIDE
+    # NOTE: The sigma_low is different in the original paper, but it doesn't work.
+    # We take this from the original code
     sigma_levels = tf.math.exp(tf.linspace(tf.math.log(10.0), tf.math.log(0.1), 10))
     # sigma_levels = tf.math.exp(tf.linspace(tf.math.log(5.0), tf.math.log(0.1), 10))
     # sigma_levels = np.linspace(10, 0.1, 10)
@@ -188,17 +188,15 @@ if __name__ == "__main__":
     # sigma_levels = tf.clip_by_value(sigma_levels, 0.1, 10.0)
     print(sigma_levels)
 
-
-    #
-
     # epsilons = [10e-2, 10e-3, 10e-4, 10e-5, 10e-6, 10e-7]
-    epsilons = [6*10e-6, 5.5*10e-6, 5*10e-6, 4.5*10e-6, 4*10e-6]
+    epsilons = [6 * 10e-6, 5.5 * 10e-6, 5 * 10e-6, 4.5 * 10e-6, 4 * 10e-6]
     #
     samples = []
     #
     for epsilon in epsilons:
         print(epsilon)
-        samples.append(annealed_langevin_dynamics(analytic_log_prob_grad, gmm, x_init, sigma_levels, T=100, eps=epsilon))
+        samples.append(
+            annealed_langevin_dynamics(analytic_log_prob_grad, gmm, x_init, sigma_levels, T=100, eps=epsilon))
     #
     # colors = ["#F7D242", "#F89111", "#D24942", "#842069", "#3B0C5C"]
     fig, ax = plt.subplots(1, len(epsilons), sharey=True, figsize=(13, 3))
@@ -214,16 +212,14 @@ if __name__ == "__main__":
         a.set_xlabel(r'$x$')
         a.set_xlim(-10, 10)
         # a.set_ylim(-10, 10)
-        a.set_title(r'$\epsilon=$'+'{0:.0e}'.format(epsilons[i]))
+        a.set_title(r'$\epsilon=$' + '{0:.0e}'.format(epsilons[i]))
 
     # plt.savefig("samples_eps_linear_2.pdf", bbox_inches="tight")
     plt.show()
 
-
     # visualize_samples(samples_annealed_langevin, "samples_annealed_langevin_test_2")
     #
     # # # annealed Langevin dynamics
-    # # # TODO: THEY REPORT DIFFERENT LOW_SIGMA IN THE PAPER, IT DOESN'T WORK WITH WHAT THEY PROVIDE
     # # sigma_levels = tf.math.exp(tf.linspace(tf.math.log(10.0), tf.math.log(0.1), 10))
     # # print(sigma_levels)
     # # samples_annealed_langevin = annealed_langevin_dynamics(analytic_log_prob_grad, gmm, x_init, sigma_levels)

@@ -1,8 +1,6 @@
 """
 This file contains functions for evaluating which checkpoint (saved every 5000 steps) of a model is the best one.
 This selection is based on a small FID score computed with 1000 images.
-TODO: decide whether to use training set or test set.
-
 """
 import csv
 import os

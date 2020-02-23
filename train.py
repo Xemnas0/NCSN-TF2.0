@@ -70,7 +70,6 @@ def main():
 
             avg_loss += current_loss
             if step % configs.config_values.checkpoint_freq == 0:
-                # TODO: maybe save also info about the sigmas
                 # Save checkpoint
                 ckpt = tf.train.Checkpoint(step=tf.Variable(0), optimizer=optimizer, model=model)
                 ckpt.step.assign_add(step)
