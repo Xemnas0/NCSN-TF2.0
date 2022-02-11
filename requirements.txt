@@ -25,7 +25,7 @@ opt-einsum==3.1.0
 params-flow==0.7.0
 Pillow==8.1.1
 promise==2.2.1
-protobuf==3.10.0
+protobuf==3.15.0
 psutil==5.6.6
 py-params==0.6.4
 pyparsing==2.4.2
